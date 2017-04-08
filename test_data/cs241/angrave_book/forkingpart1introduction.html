@@ -1,0 +1,235 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Forking, Part 1: Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Forking, Part 1: Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Forking, Part 1: Introduction
+            </div>
+            <h3>Forking, Part 1: Introduction</h3>
+
+<h2>A word of warning</h2>
+<p>Process forking is a very powerful (and very dangerous) tool. If you mess up and cause a fork bomb (explained later on this page), <strong>you can bring down the entire system</strong>. To reduce the chances of this, limit your maximum number of processes to a small number e.g<br />
+ 40 by typing "ulimit -u 40" into a command line.</p>
+<p>When testing fork() code, ensure that you have either root and/or physical access to the machine involved. If you must work on fork () code remotely, remember that <strong>kill -9 -1</strong> will save you in the event of an emergency.</p>
+<p>TL;DR: Fork can be <strong>extremely</strong> dangerous if you aren't prepared for it. <strong>You have been warned.</strong></p>
+<h2>What does fork do?</h2>
+<p>The <code>fork</code> system call clones the current process to create a new process. It creates a new process (the child process) by duplicating the state of the existing process with a few minor differences (discussed below). The child process does not start from main. Instead it returns from <code>fork()</code> just as the parent process does.</p>
+<h2>What is the simplest <code>fork()</code> example?</h2>
+<p>Here's a very simple example...</p>
+<pre class="highlight"><code class="language-C">printf(&quot;I'm printed once!\n&quot;);
+fork();
+// Now there are two processes running
+// and each process will print out the next line.
+printf(&quot;You see this line twice!\n&quot;);</code></pre>
+
+
+<h2>Why does this example print 42 twice?</h2>
+<p>The following program prints out 42 twice - but the <code>fork()</code> is after the <code>printf</code>!? Why?</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt; /*fork declared here*/
+#include &amp;lt;stdio.h&amp;gt; /* printf declared here*/
+int main() {
+   int answer = 84 &amp;gt;&amp;gt; 1;
+   printf(&quot;Answer: %d&quot;, answer);
+   fork();
+   return 0;
+}</code></pre>
+
+
+<p>The <code>printf</code> line <em>is</em> executed only once however notice that the printed contents is not flushed to standard out (there's no newline printed, we didn't call <code>fflush</code>, or change the buffering mode).<br />
+The output text is therefore in still in process memory waiting to be sent.<br />
+When <code>fork()</code> is executed the entire process memory is duplicated including the buffer. Thus the child process starts with a non-empty output buffer which will be flushed when the program exits.</p>
+<h2>How do you write code that is different for the parent and child process?</h2>
+<p>Check the return value of <code>fork()</code>. Return value -1= failed; 0= in child process; positive = in parent process (and the return value is the child process id).  Here's one way to remember which is which:</p>
+<p>The child process can find its parent - the original process that was duplicated -  by calling getppid() - so does not need any additional return information from <code>fork()</code>. The parent process however can only find out the id of the new child process from the return value of <code>fork</code>:</p>
+<pre class="highlight"><code class="language-C">pid_t id = fork();
+if (id == -1) exit(1); // fork failed 
+if (id &amp;gt; 0)
+{ 
+// I'm the original parent and 
+// I just created a child process with id 'id'
+// Use waitpid to wait for the child to finish
+} else { // returned zero
+// I must be the newly made child process
+}</code></pre>
+
+
+<h2>What is a fork bomb ?</h2>
+<p>A 'fork bomb' is when you attempt to create an infinite number of processes. A simple example is shown below:</p>
+<pre class="highlight"><code>while (1) fork();</code></pre>
+
+
+<p>This will often bring a system to a near-standstill as it attempts to allocate CPU time and memory to a very large number of processes that are ready to run. Comment: System administrators don't like fork-bombs and may set upper limits on the number of processes each user can have or may revoke login rights because it creates a disturbance in the force for other users' programs. You can also limit the number of child processes created by using <code>setrlimit()</code>.</p>
+<p>fork bombs are not necessarily malicious - they occasionally occur due to student coding errors.</p>
+<p>Angrave suggests that the Matrix trilogy, where the machine and man finally work together to defeat the multiplying Agent-Smith, was a cinematic plot based on an AI-driven fork-bomb.</p>
+<h2>How does the parent process wait for the child to finish?</h2>
+<p>Use <code>waitpid</code> (or <code>wait</code>).</p>
+<pre class="highlight"><code class="language-C">pid_t child_id = fork();
+if (child_id == -1) { perror(&quot;fork&quot;); exit(EXIT_FAILURE);}
+if (child_id &amp;gt; 0) { 
+  // We have a child! Get their exit code
+  int status; 
+  waitpid( child_id, &amp;amp;status, 0 );
+  // code not shown to get exit status from child
+} else { // In child ...
+  // start calculation
+  exit(123);
+}</code></pre>
+
+
+<h2>Can I make the child process execute another program?</h2>
+<p>Yes. Use one of the <a href="http://man7.org/linux/man-pages/man3/exec.3.html"><code>exec</code></a> functions after forking. The <code>exec</code> set of functions replaces the process image with the the process image of what is being called. This means that any lines of code after the <code>exec</code> call are replaced. Any other work you want the child process to do should be done before the <code>exec</code> call.  </p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt; 
+#include &amp;lt;sys/wait.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+
+int main(int argc, char**argv) {
+  pid_t child = fork();
+  if (child == -1) return EXIT_FAILURE;
+  if (child) { /* I have a child! */
+    int status;
+    waitpid(child , &amp;amp;status ,0);
+    return EXIT_SUCCESS;
+
+  } else { /* I am the child */
+    // Other versions of exec pass in arguments as arrays
+    // Remember first arg is the program name
+    // Last arg must be a char pointer to NULL
+
+    execl(&quot;/bin/ls&quot;, &quot;ls&quot;,&quot;-alh&quot;, (char *) NULL);
+
+    // If we get to this line, something went wrong!
+    perror(&quot;exec failed!&quot;);
+  }
+}</code></pre>
+
+
+<h2>A simpler way to execute another program</h2>
+<p>Use <code>system</code>!!! Here is how to use it:</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+
+int main(int argc, char**argv) {
+  system(&quot;/bin/ls&quot;);
+  return 0;
+}</code></pre>
+
+
+<p>The <code>system</code> call would fork, exec the command passed by parameter and the parent process would wait for this to finish. This also means that <code>system</code> is a blocking call - The parent process can't continue until the process started by <code>system</code> exits. This may be useful or it may not be, use with caution.</p>
+<h2>What is the silliest fork example?</h2>
+<p>A slightly silly example is shown below. What will it print? Try it with multiple arguments to your program.</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+int main(int argc, char **argv) {
+  pid_t id;
+  int status; 
+  while (--argc &amp;amp;&amp;amp; (id=fork())) {
+    waitpid(id,&amp;amp;status,0); /* Wait for child*/
+  }
+  printf(&quot;%d:%s\n&quot;, argc, argv[argc]);
+  return 0;
+}</code></pre>
+
+
+<p>The amazing parallel apparent-O(N) <em>sleepsort</em> is today's silly winner. First published on <a href="https://dis.4chan.org/read/prog/1295544154">4chan in 2011 </a>. A version of this awful but amusing sorting algorithm is shown below.</p>
+<pre class="highlight"><code class="language-C">int main(int c, char **v)
+{
+        while (--c &amp;gt; 1 &amp;amp;&amp;amp; !fork());
+        int val  = atoi(v[c]);
+        sleep(val);
+        printf(&quot;%d\n&quot;, val);
+        return 0;
+}</code></pre>
+
+
+<h2>What is different in the child process than the parent process?</h2>
+<p>The key differences include:<br />
+<em> The process id returned by <code>getpid()</code>. The parent process id returned by <code>getppid()</code>.<br />
+</em> The parent is notified via a signal when the child process finishes but not vice versa.<br />
+* The child does not inherit pending signals or timer alarms.<br />
+For a complete list see the <a href="http://man7.org/linux/man-pages/man2/fork.2.html">fork man page</a></p>
+<h1>Do child processes share open filehandles?</h1>
+<p>Yes! In fact both processes use the same underlying kernel file descriptor. For example if one process rewinds the random access position back to the beginning of the file, then both processes are affected.</p>
+<p>Both child and parent should <code>close</code> (or <code>fclose</code>) their file descriptors or file handle respectively.</p>
+<h2>How can I find out more?</h2>
+<p>Read the man pages!<br />
+<em> <a href="http://man7.org/linux/man-pages/man2/fork.2.html">fork</a><br />
+</em> <a href="http://man7.org/linux/man-pages/man3/exec.3.html">exec</a><br />
+* <a href="http://man7.org/linux/man-pages/man2/wait.2.html">wait</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

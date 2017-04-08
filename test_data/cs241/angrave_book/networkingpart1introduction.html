@@ -1,0 +1,113 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Networking, Part 1: Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Networking, Part 1: Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Networking, Part 1: Introduction
+            </div>
+            <h3>Networking, Part 1: Introduction</h3>
+
+<p>Caveat: It should be obvious that  page is <em>not</em> a complete description of IP, UDP or TCP! Instead it is a short introduction and is sufficient so that we can build upon these concepts in later lectures.</p>
+<h2>What is "IP4" "IP6"?</h2>
+<p>The following is the "30 second" introduction to internet protocol (IP) - which is the primary way to send packets ("datagrams") of information from one machine to another.</p>
+<p>"IP4", or more precisely, "IPv4" is version 4 of the Internet Protocol that describes how to send packets of information across a network from one machine to another . Roughly 95% of all packets on the Internet today are IPv4 packets. A significant limitation of IPv4 is that source and destination addresses are limited to 32 bits (IPv4 was designed at a time when the idea of 4 billion devices connected to the same network was unthinkable - or at least not worth making the packet size larger) </p>
+<p>Each IPv4 packet includes a very small header - typically 20 bytes (more precisely, "octets"), that includes a source and destination address.</p>
+<p>Conceptually the source and destination addresses can be split into two: a network number (the upper bits) and the lower bits represent a particular host number on that network.</p>
+<p>A newer packet protocol "IPv6" solves many of the limitations of IPv4 (e.g. makes routing tables simpler and 128 bit addresses) however less than 5% of web traffic is IPv6 based.</p>
+<p>A machine can have an IPv6 address and an IPv4 address.</p>
+<h2>"There's no place like 127.0.0.1"!</h2>
+<p>A special IPv4 address is <code>127.0.0.1</code> also known as localhost. Packets sent to 127.0.0.1 will never leave the machine; the address is specified to be the same machine.</p>
+<p>Notice that the 32 bits address is split into 4 octets i.e. each number in the dot notation can be 0-255 inclusive. However IPv4 addresses can also be written as an integer.</p>
+<h2>... and ... "There's no place like 0:0:0:0:0:0:0:1?"</h2>
+<p>The 128bit localhost address in IPv6 is <code>0:0:0:0:0:0:0:1</code> which can be written in its shortened form, <code>::1</code></p>
+<h2>What is a port?</h2>
+<p>To send a datagram (packet) to a host on the Internet using IPv4 (or IPv6) you need to specify the host address and a port. The port is an unsigned 16 bit number (i.e. the maximum port number is 65535).</p>
+<p>A process can listen for incoming packets on a particular port. However only processes with super-user (root) access can listen on ports &lt; 1024. Any process can listen on ports 1024 or higher.</p>
+<p>An often used port is port 80: Port 80 is used for unencrypted http requests (i.e. web pages).<br />
+For example, if a web browser connects to <a href="http://www.bbc.com/">http://www.bbc.com/</a>, then it will be connecting to port 80.</p>
+<h2>What is UDP? When is it used?</h2>
+<p>UDP is a connectionless protocol that is built on top of IPv4 and IPv6. It's very simple to use: Decide the destination address and port and send your data packet! However the network makes no guarantee about whether the packets will arrive.<br />
+Packets (aka Datagrams) may be dropped if the network is congested. Packets may be duplicated or arrive out of order.</p>
+<p>Between two distant data-centers it's typical to see 3% packet loss.</p>
+<p>A typical use case for UDP is when receiving up to date data is more important than receiving all of the data. For example, a game may send continuous updates of player positions. A streaming video signal may send picture updates using UDP</p>
+<h2>What is TCP? When is it used?</h2>
+<p>TCP is a connection-based protocol that is built on top of IPv4 and IPv6 (and therefore can be described as "TCP/IP" or "TCP over IP"). TCP creates a <em>pipe</em> between two machines and abstracts away the low level packet-nature of the Internet: Thus, under most conditions, bytes sent from one machine will eventually arrive at the other end without duplication or data loss. </p>
+<p>TCP will automatically manage resending packets, ignoring duplicate packets, re-arranging out-of-order packets and changing the rate at which packets are sent.</p>
+<p>TCP's three way handshake is known as SYN, SYN-ACK, and ACK. The diagram on this page helps with understanding the TCP handshake. <a href="http://www.inetdaemon.com/tutorials/internet/tcp/3-way_handshake.shtml">TCP Handshake</a></p>
+<p>Most services on the Internet today (e.g. a web service) use TCP because it hides the complexity of lower, packet-level nature of the Internet.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

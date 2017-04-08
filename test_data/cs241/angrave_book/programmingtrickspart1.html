@@ -1,0 +1,156 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Programming Tricks, Part 1</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Programming Tricks, Part 1</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Programming Tricks, Part 1
+            </div>
+            <h3>Programming Tricks, Part 1</h3>
+
+<h2>Use <code>cat</code> as your IDE</h2>
+<p>Who needs an editor? IDE? We can just use <code>cat</code>!<br />
+You've seen <code>cat</code> being used to read the contents of files but it can also be used to read the  standard-input and send it back to standard output.</p>
+<pre class="highlight"><code>$ cat
+HELLO
+HELLO</code></pre>
+
+
+<p>To finish reading from the input stream close the input stream by pressing <code>CTRL-D</code></p>
+<p>Let's use <code>cat</code> to send standard input to a file. We will use '&gt;' to redirect its output to a file:</p>
+<pre class="highlight"><code>$ cat &amp;gt; myprog.c
+#include &amp;lt;stdio.h&amp;gt;
+int main() {printf(&quot;Hi!&quot;);return 0;}</code></pre>
+
+
+<p>(Be careful! Deletes and undos are not allowed...)<br />
+Press <code>CTRL-D</code> when finished.</p>
+<h2>Edit your code with <code>perl</code> regular expressions (aka "remember your perl pie")</h2>
+<p>A useful trick if you have several text files (e.g. source code) to change is to use regular expressions.<br />
+<code>perl</code> makes this very easy to edit files in place.<br />
+Just remember 'perl pie' and search on the web...</p>
+<p>An example. Suppose we want to change the sequence "Hi" to "Bye" in all .c files in the current directory. Then we can write a simple substitution pattern that will be executed on each line at time in all files:</p>
+<pre class="highlight"><code>$ perl -p -i -e 's/Hi/Bye/' *.c</code></pre>
+
+
+<p>(Don't panic if you get it wrong, original files are still there; they just have the extension .bak)<br />
+Obviously there's a lot more you can do with regular expressions than changing Hi to Bye.</p>
+<h2>Use your shell <code>!!</code></h2>
+<p>To re-run the last command just type <code>!!</code> and press <code>return</code><br />
+To re-run the last command that started with g type <code>!g</code>  and press <code>return</code></p>
+<h2>Use your shell <code>&amp;amp;&amp;amp;</code></h2>
+<p>Tired of running <code>make</code> or <code>gcc</code> and then running the program if it compiled OK? Instead, use &amp;&amp; to chain these commands together</p>
+<pre class="highlight"><code>$ gcc program.c &amp;amp;&amp;amp; ./a.out</code></pre>
+
+
+<h2>Make can do more than make</h2>
+<p>You might also try putting a line in your Makefile that will compile, and then run your program.</p>
+<pre class="highlight"><code>run : $(program)
+        ./$(program)</code></pre>
+
+
+<p>Then running</p>
+<pre class="highlight"><code>$ make run</code></pre>
+
+
+<p>will make sure any changes you've made are compiled, and run your program in one go. Also good for testing many inputs at once. Although you probably would just rather write a regular shell script for that.</p>
+<h2>Is your neighbor too productive? C pre-procesors to the rescue!</h2>
+<p>Use the C pre-processor to redefine common keywords e.g.</p>
+<pre class="highlight"><code class="language-C">#define if while</code></pre>
+
+
+<p>Protip: Put this line inside one of the standard includes e.g. /usr/include/stdio.h</p>
+<h2>Who needs functions when you C have the preprocessor</h2>
+<p>OK, so this is more of a gotcha. Be careful when using macros that look like functions...</p>
+<pre class="highlight"><code class="language-C">#define min(a,b) a&amp;lt;b?a:b</code></pre>
+
+
+<p>A perfectly reasonable definition of a minimum of a and b. However the pre-processor is just a simple<br />
+text wrangler so precedence can bite you:</p>
+<pre class="highlight"><code class="language-C">int value = -min(2,3); // Should be -2?</code></pre>
+
+
+<p>Is expanded to </p>
+<pre class="highlight"><code>int value = -2&amp;lt;3 ? 2 :3; // Ooops.. result will be 2</code></pre>
+
+
+<p>A partial fix is to wrap every argument with <code>()</code> and also the whole expression with ():</p>
+<pre class="highlight"><code class="language-C">#define min(a,b) (  (a) &amp;lt; (b) ?(a):(b) )</code></pre>
+
+
+<p>However this is still <em>not</em> a function! For example can you see why <code>min(i++,10)</code> might increment i once or twice!?</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

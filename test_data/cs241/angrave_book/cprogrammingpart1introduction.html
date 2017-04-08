@@ -1,0 +1,327 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>C Programming, Part 1: Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">C Programming, Part 1: Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; C Programming, Part 1: Introduction
+            </div>
+            <h3>C Programming, Part 1: Introduction</h3>
+
+<h1>Want a quick introduction to C?</h1>
+<ul>
+<li>Keep reading for the quick crash-course to C Programming below</li>
+<li>Then see the [[C Gotchas wiki page|C Programming, Part 3: Common Gotchas]].</li>
+<li>And learn about [[text I/O|C Programming, Part 2: Text Input And Output]].</li>
+<li>Kick back relax with <a href="http://cs-education.github.io/sys/#">Lawrence's intro videos</a></li>
+<li>^ and the same link includes a virtual machine-in-a-browser you can play with</li>
+<li>Or watch some old CS241 slides <a href="https://subversion.ews.illinois.edu/svn/fa14-cs241/_shared/past-lectures/">CS241 Old Slides</a></li>
+</ul>
+<h1>External resources</h1>
+<ul>
+<li><a href="http://www.ccs.neu.edu/course/com3620/parent/C-for-Java-C++/c-for-c++-alt.html">C for C++/Java Programmers</a></li>
+<li><a href="http://www.lysator.liu.se/c/bwk-tutor.html">C Tutorial by Brian Kernighan</a></li>
+<li><a href="http://c-faq.com/">c faq</a></li>
+<li><a href="http://gribblelab.org/CBootCamp/index.html">C Bootcamp</a></li>
+<li><a href="http://www.cplusplus.com/reference/clibrary/">C/C++ function reference</a></li>
+<li><a href="http://www.unknownroad.com/rtfm/gdbtut/gdbtoc.html">gdb (Gnu debugger) tutorial</a> Tip: run gdb with the "-tui" command line argument to get a full screen version of the debugger.</li>
+<li>Add your favorite resources here</li>
+</ul>
+<h1>Crash course intro to C</h1>
+<p><em>Warning new page</em> Please fix typos and formatting mistakes for me and add useful links too.*</p>
+<h2>How do you write a complete hello world program in C?</h2>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+int main(void) { 
+    printf(&quot;Hello World\n&quot;);
+    return 0; 
+}</code></pre>
+
+
+<h2>Why do we use '<code>#include stdio.h</code>'?</h2>
+<p>We're lazy! We don't want to declare the <code>printf</code> function. It's already done for us inside the file '<code>stdio.h</code>'. The #include includes the text of the file as part of our file to be compiled.</p>
+<h2>How are C strings represented?</h2>
+<p>As characters in memory.  The end of the string includes a NULL (0) byte. So "ABC" requires four(4) bytes. The only way to find out the length of a C string is to keep reading memory until you find the NULL byte. C characters are always exactly one byte each.</p>
+<p>When you write a string literal <code>"ABC"</code> in an expression the string literal evaluates to a char pointer (char *), which points to the first byte/char of the string.  This means <code>ptr</code> in the example below will hold the memory address of the first character in the string.</p>
+<pre class="highlight"><code class="language-C">char *ptr = &quot;ABC&quot;</code></pre>
+
+
+<h2>How do you declare a pointer?</h2>
+<p>A pointer refers to a memory address. The type of the pointer is useful - it tells the compiler how many bytes need to be read/written.</p>
+<pre class="highlight"><code>int *ptr1;
+char *ptr2;</code></pre>
+
+
+<h2>How do you use a pointer to read/write some memory?</h2>
+<p>if 'p' is a pointer then use "*p" to write to the memory address(es) pointed to by p.</p>
+<pre class="highlight"><code class="language-C">*ptr = 0; // Writes some memory.</code></pre>
+
+
+<p>The number of bytes written depends on the pointer type.</p>
+<h2>What is pointer arithmetic?</h2>
+<p>You can add an integer to a pointer. However the pointer type is used to determine how much to increment the pointer. For char pointers this is trivial because characters are always one byte:</p>
+<pre class="highlight"><code class="language-C">char *ptr = &quot;Hello&quot;; // ptr holds the memory location of 'H'
+ptr += 2; //ptr now points to the first'l'</code></pre>
+
+
+<p>If an int is 4 bytes then ptr+1 points to 4 bytes after whatever ptr is pointing at.</p>
+<pre class="highlight"><code class="language-C">char *ptr = &quot;ABCDEFGH&quot;;
+int *bna = (int *) ptr;
+bna +=1; // Would cause iterate by one integer space (i.e 4 bytes on some systems)
+ptr = (char *) bna;
+printf(&quot;%s&quot;, ptr);
+/* Notice how only 'EFGH' is printed. Why is that? Well as mentioned above, when performing 'bna+=1' we are increasing the **integer** pointer by 1, (translates to 4 bytes on most systems) which is equivalent to 4 characters (each character is only 1 byte)*/
+return 0;</code></pre>
+
+
+<p>Because pointer arithmetic in C is always automatically scaled by the size of the type that is pointed to, you can't perform pointer arithmetic on void pointers.</p>
+<h2>What is a void pointer?</h2>
+<p>A pointer without a type (very similar to a void variable). You can think of this as a raw pointer, or just a memory address. You cannot directly read or write to it because the void type does not have a size.</p>
+<p>This is often used when either a datatype you're dealing with is unknown or when you're interfacing C code with other programming languages.</p>
+<h2>Does <code>printf</code> call write or does write call <code>printf</code>?</h2>
+<p><code>printf</code> calls <code>write</code>. <code>printf</code> includes an internal buffer so, to increase performance <code>printf</code> may not call <code>write</code> everytime you call <code>printf</code>. <code>printf</code> is a C library function. <code>write</code> is a system call and as we know system calls are expensive. On the other hand <code>printf</code> uses a buffer which suits our needs better at that point</p>
+<h2>How do you print out pointer values? integers? strings?</h2>
+<p>Use format specifiers "%p" for pointers, "%d" for integers and "%s" for Strings.<br />
+A full list of all of the format specifiers is found <a href="http://www.cplusplus.com/reference/cstdio/printf/">here</a></p>
+<p>Example of integer:</p>
+<pre class="highlight"><code class="language-C">int num1 = 10;
+printf(&quot;%d&quot;, num1); //prints num1</code></pre>
+
+
+<p>Example of integer pointer:</p>
+<pre class="highlight"><code class="language-C">int *ptr = (int *) malloc(sizeof(int));
+*ptr = 10;
+printf(&quot;%p\n&quot;, ptr); //prints the address pointed to by the pointer
+printf(&quot;%p\n&quot;, &amp;amp;ptr); /*prints the address of pointer -- extremely useful
+when dealing with double pointers*/
+printf(&quot;%d&quot;, *ptr); //prints the integer content of ptr
+return 0;</code></pre>
+
+
+<p>Example of string:</p>
+<pre class="highlight"><code class="language-C">char *str = (char *) malloc(256 * sizeof(char));
+strcpy(str, &quot;Hello there!&quot;);
+printf(&quot;%p\n&quot;, str); // print the address in the heap
+printf(&quot;%s&quot;, str);
+return 0;</code></pre>
+
+
+<p><a href="https://www.cs.bu.edu/teaching/c/string/intro/">Strings as Pointers &amp; Arrays @ BU</a></p>
+<h2>How would you make standard out be saved to a file?</h2>
+<p>Simplest way: run your program and use shell redirection<br />
+e.g.</p>
+<pre class="highlight"><code>./program &amp;gt; output.txt
+
+#To read the contents of the file,
+cat output.txt</code></pre>
+
+
+<p>More complicated way: close(1) and then use open to re-open the file descriptor.<br />
+See [[<a href="http://cs-education.github.io/sys/#chapter/0/section/3/activity/0">http://cs-education.github.io/sys/#chapter/0/section/3/activity/0</a>]]</p>
+<h2>What's the difference between a pointer and an array? Give an example of something you can do with one but not the other.</h2>
+<pre class="highlight"><code>char ary[] = &quot;Hello&quot;;
+char *ptr = &quot;Hello&quot;;</code></pre>
+
+
+<p>Example </p>
+<p>The array name points to the first byte of the array. Both <code>ary</code> and <code>ptr</code> can be printed out:</p>
+<pre class="highlight"><code class="language-C">char ary[] = &quot;Hello&quot;;
+char *ptr = &quot;Hello&quot;;
+// Print out address and contents
+printf(&quot;%p : %s\n&quot;, ary, ary);
+printf(&quot;%p : %s\n&quot;, ptr, ptr);</code></pre>
+
+
+<p>The array is mutable, so we can change its contents (be careful not to write bytes beyond the end of the array though). Fortunately 'World' is no longer than 'Hello"</p>
+<p>In this case, the char pointer <code>ptr</code> points to some read only memory (where the statically allocated string literal is stored), so we cannot change those contents.</p>
+<pre class="highlight"><code>strcpy(ary, &quot;World&quot;); // OK
+strcpy(ptr, &quot;World&quot;); // NOT OK - Segmentation fault (crashes)</code></pre>
+
+
+<p>We can, however, unlike the array, we change <code>ptr</code> to point to another piece of memory,</p>
+<pre class="highlight"><code>ptr = &quot;World&quot;; // OK!
+ptr = ary; // OK!
+ary = (..anything..) ; // WONT COMPILE
+// ary is doomed to always refer to the original array.
+printf(&quot;%p : %s\n&quot;, ptr, ptr);
+strcpy(ptr, &quot;World&quot;); // OK because now ptr is pointing to mutable memory (the array)</code></pre>
+
+
+<p>What to take away from this is that pointers * can point to any type of memory while C arrays [] can only point to memory on the stack. In a more common case, pointers will point to heap memory in which case the memory referred to by the pointer CAN be modified.</p>
+<h2><code>sizeof()</code> returns the number of bytes. So using above code, what is sizeof(ary) and sizeof(ptr)?</h2>
+<p><code>sizeof(ary)</code>: <code>ary</code> is an array. Returns the number of bytes required for the entire array (5 chars + zero byte = 6 bytes)<br />
+<code>sizeof(ptr)</code>: Same as sizeof(char *). Returns the number bytes required for a pointer (e.g. 4 or 8 for a 32 bit or 64 bit machine)</p>
+<h2>Which of the following code is incorrect or correct and why?</h2>
+<pre class="highlight"><code class="language-C">int* f1(int *p) {
+    *p = 42;
+    return p;
+} // This code is correct;</code></pre>
+
+
+<pre class="highlight"><code class="language-C">char* f2() {
+    char p[] = &quot;Hello&quot;;
+    return p;
+} // Incorrect!</code></pre>
+
+
+<p>Explanation: An array p is created on the stack for the correct size to hold H,e,l,l,o, and a null byte i.e. (6) bytes. This array is stored on the stack and is invalid after we return from f2.</p>
+<pre class="highlight"><code class="language-C">char* f3() {
+    char *p = &quot;Hello&quot;;
+    return p;
+} // OK</code></pre>
+
+
+<p>Explanation: p is a pointer. It holds the address of the string constant. The string constant is unchanged and valid even after f3 returns.</p>
+<pre class="highlight"><code class="language-C">char* f4() {
+    static char p[] = &quot;Hello&quot;;
+    return p;
+} // OK</code></pre>
+
+
+<p>Explanation: The array is static meaning it exists for the lifetime of the process (static variables are not on the heap or the stack).</p>
+<h2>How do you look up information C library calls and system calls?</h2>
+<p>Use the man pages. Note the man pages are organized into sections. Section 2 = System calls. Section 3 = C libraries.<br />
+Web: Google "man7 open"<br />
+shell: man -S2 open  or man -S3 printf</p>
+<h2>How do you allocate memory on the heap?</h2>
+<p>Use malloc. There's also realloc and calloc.<br />
+Typically used with sizeof. e.g. enough space to hold 10 integers</p>
+<pre class="highlight"><code class="language-C">int *space = malloc(sizeof(int) * 10);</code></pre>
+
+
+<h2>What's wrong with this string copy code?</h2>
+<pre class="highlight"><code class="language-C">void mystrcpy(char*dest, char* src) { 
+  // void means no return value   
+  while( *src ) { dest = src; src ++; dest++; }  
+}</code></pre>
+
+
+<p>In the above code it simply changes the dest pointer to point to source string. Also the nul bytes is not copied. Here's a better version - </p>
+<pre class="highlight"><code>  while( *src ) { *dest = *src; src ++; dest++; } 
+  *dest = *src;</code></pre>
+
+
+<p>Note it's also usual to see the following kind of implementation, which does everything inside the expression test, including copying the nul byte.</p>
+<pre class="highlight"><code class="language-C">  while( (*dest++ = *src++ )) {};</code></pre>
+
+
+<h2>How do you write a strdup replacement?</h2>
+<pre class="highlight"><code class="language-C">// Use strlen+1 to find the zero byte... 
+char* mystrdup(char*source) {
+   char *p = (char *) malloc ( strlen(source)+1 );
+   strcpy(p,source);
+   return p;
+}</code></pre>
+
+
+<h2>How do you unallocate memory on the heap?</h2>
+<p>Use free!</p>
+<pre class="highlight"><code class="language-C">int *n = (int *) malloc(sizeof(int));
+*n = 10;
+//Do some work
+free(n);</code></pre>
+
+
+<h2>What is double free error? How can you avoid? What is a dangling pointer? How do you avoid?</h2>
+<p>A double free error is when you accidentally attempt to free the same allocation twice.</p>
+<pre class="highlight"><code class="language-C">int *p = malloc(sizeof(int));
+free(p);
+
+*p = 123; // Oops! - Dangling pointer! Writing to memory we don't own anymore
+
+free(p); // Oops! - Double free!</code></pre>
+
+
+<p>The fix is firstly to write correct programs! Secondly, it's good programming hygiene to reset pointers<br />
+once the memory has been freed. This ensures the pointer cant be used incorrectly without the program crashing.</p>
+<p>Fix:</p>
+<pre class="highlight"><code class="language-C">p = NULL; // Now you can't use this pointer by mistake</code></pre>
+
+
+<h2>What is an example of buffer overflow?</h2>
+<p>Famous example: Heart Bleed (performed a memcpy into a buffer that was of insufficient size).<br />
+Simple example: implement a strcpy and forget to add one to strlen, when determining the size of the memory required.</p>
+<h2>What is 'typedef' and how do you use it?</h2>
+<p>Declares an alias for a type. Often used with structs to reduce the visual clutter of having to write 'struct' as part of the type.</p>
+<pre class="highlight"><code class="language-C">typedef float real; 
+real gravity = 10;
+// Also typedef gives us an abstraction over the underlying type used. 
+// For example in the future we only need to change this typedef if we
+// wanted our physics library to use doubles instead of floats.
+
+typedef struct link link_t; 
+//With structs, include the keyword 'struct' as part of the original types</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 7: Scalable and Reliable Filesystems</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 7: Scalable and Reliable Filesystems</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 7: Scalable and Reliable Filesystems
+            </div>
+            <h3>File System, Part 7: Scalable and Reliable Filesystems</h3>
+
+<p>Note These notes are not quite complete. Please also see</p>
+<p><a href="https://subversion.ews.illinois.edu/svn/fa15-cs241/_shared/lecture_handouts/CS241-28-filesystems-5.pptx">https://subversion.ews.illinois.edu/svn/fa15-cs241/_shared/lecture_handouts/CS241-28-filesystems-5.pptx</a></p>
+<h2>How and why does the kernel cache the filesystem?</h2>
+<p>Most filesystems cache significant amounts of disk data in physical memory.<br />
+Linux, in this respect, is particularly extreme: All unused memory is used as a giant disk cache.</p>
+<p>The disk cache can have significant impact on overall system performance because disk I/O is slow. This is especially true for random access requests on spinning disks where the disk read-write latency is dominated by the seek time required to move the read-write disk head to the correct position.</p>
+<p>For efficiency, the kernel caches recently used disk blocks. <br />
+For writing we have to choose a trade-off between performance and reliability: Disk writes can also be cached ("Write-back cache") where modified disk blocks are stored in memory until evicted. Alternatively a 'write-through cache' policy can be employed where disk writes are sent immediately to the disk. The latter is safer (as filesystem modifications are quickly stored to persistent media) but slower than a write-back cache; If writes are cached then they can be delayed and efficiently scheduled based on the physical position of each disk block.</p>
+<p>Note this is a simplified description because solid state drives (SSDs) can be used as a secondary write-back cache.</p>
+<p>Both solid state disks (SSD) and spinning disks have improved performance when reading or writing sequential data. Thus operating system can often use a read-ahead strategy to amortize the read-request costs (e.g. time cost for a spinning disk) and request several contiguous disk blocks per request. By issuing an I/O request for the next disk block before the user application requires the next disk block, the apparent disk I/O latency can be reduced.</p>
+<h2>My data is important! Can I force the disk writes to be saved to the physical media and wait for it to complete?</h2>
+<p>Yes (almost). Call <code>sync</code> to request that a filesystem changes be written (flushed) to disk.<br />
+However, not all operating systems honor this request and even if the data is evicted from the kernel buffers the disk firmware use an internal on-disk cache or may not yet have finished changing the physical media. </p>
+<p>Note you can also request that all changes associated with a particular file descriptor are flushed to disk using <code>fsync(int fd)</code></p>
+<h2>How likely is a disk failure?</h2>
+<p>Disk failures are measured using "Mean-Time-Failure". For large arrays, the mean failure time can be surprising short. For example if the MTTF(single disk) = 30,000 hours, then the MTTF(100 disks)= 30000/100=300 hours  ie about 12 days!</p>
+<h2>How do I protect my data from disk failure?</h2>
+<p>Easy! Store the data twice! This is the main principle of a "RAID-1" disk array. By duplicating the writes to a disk with writes to another (backup disk) there are exactly two copies of the data. If one disk fails, the other disk serves as the only copy until it can be re-cloned. Reading data is faster (since data can be requested from either disk) but writes are potentially twice as slow (now two write commands need to be issued for every disk block write) and, compared to using a single disk, the cost of storage per byte has doubled.</p>
+<h2>What is RAID-3?</h2>
+<p>RAID-3 uses parity codes instead of mirroring the data. For each N-bits written we will write one extra bit, the 'Parity bit' that ensures the total number of 1s written is even.  The parity bit is written to an additional disk. If any one disk (including the parity disk) is lost, then its contents can still be computed using the contents of the other disks.</p>
+<p>One disadvantage of RAID-3 is that whenever a disk block is written, the parity block will always be written too.</p>
+<h2>How secure is RAID-3 to data-loss?</h2>
+<p>A single disk failure will not result in data loss (because there is sufficient data to rebuild the array from the remaining disks). Data-loss will occur when a two disks are unusable because there is no longer sufficient data to rebuild the array. We can calculate the probability of a two disk failure based on the repair time which includes not just the time to insert a new disk but the time required to rebuild the entire contents of the array.</p>
+<pre class="highlight"><code>MTTF = mean time to failure
+MTTR = mean time to repair
+N = number of original disks
+
+p = MTTR / (MTTF-one-disk / (N-1))</code></pre>
+
+
+<p>Using typical numbers (MTTR=1day, MTTF=1000days, N-1 = 9,, p=0.009</p>
+<p>There is a 1% chance that another drive will fail during the rebuild process (at that point you had better hope you still have an accessible backup of your original data.</p>
+<p>In practice the probability of a second failure during the repair process is likely higher because rebuilding the array is I/O-intensive (and on top of normal I/O request activity). This higher I/O load will also stress the disk array</p>
+<h2>What is RAID-5?</h2>
+<p>RAID-5 is similar to RAID-3 except that the check block (parity information) is assigned to different disks for different blocks. The check-block is 'rotated' through the disk array. RAID-5 provides better read and write performance than RAID-3 because there is no longer the bottleneck of the single parity disk.</p>
+<h2>Distributed storage</h2>
+<p>Failure is the common case<br />
+Google reports 2-10% of disks fail per year<br />
+Now multiply that by 60,000+ disks in a single warehouse...<br />
+Must survive failure of not just a disk, but a rack of servers or a whole data center</p>
+<p>Solutions<br />
+Simple redundancy (2 or 3 copies of each file)<br />
+e.g., Google GFS (2001)<br />
+More efficient redundancy (analogous to RAID 3++)<br />
+e.g., Google Colossus filesystem (~2010): customizable replication including Reed-Solomon codes with 1.5x redundancy</p>
+<p><a href="http://goo.gl/LwFIy">http://goo.gl/LwFIy</a></p>
+<h3>Questions</h3>
+<ul>
+<li>In ext2, what is stored in an inode, and what is stored in a directory entry?</li>
+<li>What are /sys, /proc, /dev/random, and /dev/urandom?</li>
+<li>How do you use chmod to set user/group/owner read/write/execute permissions?</li>
+<li>What does the "dd" command do?</li>
+<li>What is the difference between a hard link and a symbolic link?</li>
+<li>"ls -l" shows the size of each file in a directory. Is the size stored in the directory or in the file's inode?</li>
+</ul>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

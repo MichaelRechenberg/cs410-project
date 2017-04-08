@@ -1,0 +1,158 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Networking, Part 3: Building a simple TCP Client</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Networking, Part 3: Building a simple TCP Client</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Networking, Part 3: Building a simple TCP Client
+            </div>
+            <h3>Networking, Part 3: Building a simple TCP Client</h3>
+
+<h2>Complete Simple TCP Client Example</h2>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;string.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt;
+#include &amp;lt;sys/socket.h&amp;gt;
+#include &amp;lt;netdb.h&amp;gt;
+#include &amp;lt;unistd.h&amp;gt;
+
+int main(int argc, char **argv)
+{
+    int s;
+    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct addrinfo hints, *result;
+    memset(&amp;amp;hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET; /* IPv4 only */
+    hints.ai_socktype = SOCK_STREAM; /* TCP */
+
+    s = getaddrinfo(&quot;www.illinois.edu&quot;, &quot;80&quot;, &amp;amp;hints, &amp;amp;result);
+    if (s != 0) {
+            fprintf(stderr, &quot;getaddrinfo: %s\n&quot;, gai_strerror(s));
+            exit(1);
+    }
+
+    connect(sock_fd, result-&amp;gt;ai_addr, result-&amp;gt;ai_addrlen);
+
+    char *buffer = &quot;GET / HTTP/1.0\r\n\r\n&quot;;
+    printf(&quot;SENDING: %s&quot;, buffer);
+    printf(&quot;===\n&quot;);
+    write(sock_fd, buffer, strlen(buffer));
+
+
+    char resp[1000];
+    int len = read(sock_fd, resp, 999);
+    resp[len] = '\0';
+    printf(&quot;%s\n&quot;, resp);
+
+    return 0;
+}</code></pre>
+
+
+<p>Example output:</p>
+<pre class="highlight"><code>SENDING: GET / HTTP/1.0
+
+===
+HTTP/1.1 200 OK
+Date: Mon, 27 Oct 2014 19:19:05 GMT
+Server: Apache/2.2.15 (Red Hat) mod_ssl/2.2.15 OpenSSL/1.0.1e-fips mod_jk/1.2.32
+Last-Modified: Fri, 03 Feb 2012 16:51:10 GMT
+ETag: &quot;401b0-49-4b8121ea69b80&quot;
+Accept-Ranges: bytes
+Content-Length: 73
+Connection: close
+Content-Type: text/html
+
+Provided by Web Services at Public Affairs at the University of Illinois</code></pre>
+
+
+<h2>Comment on HTTP request and response</h2>
+<p>The example above demonstrates a request to the server using Hypertext Transfer Protocol.<br />
+A web page (or other resources) are requested using the following request:</p>
+<pre class="highlight"><code>GET / HTTP/1.0</code></pre>
+
+
+<p>There are four parts (the method e.g. GET,POST,...); the resource (e.g. / /index.html /image.png); the proctocol "HTTP/1.0" and two new lines (\r\n\r\n)</p>
+<p>The server's first response line describes the HTTP version used and whether the request is successful using a 3 digit response code:</p>
+<pre class="highlight"><code>HTTP/1.1 200 OK</code></pre>
+
+
+<p>If the client had requested a non existing file, e.g. <code>GET /nosuchfile.html HTTP/1.0</code><br />
+Then the first line includes the response code is the well-known <code>404</code> response code:</p>
+<pre class="highlight"><code>HTTP/1.1 404 Not Found</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

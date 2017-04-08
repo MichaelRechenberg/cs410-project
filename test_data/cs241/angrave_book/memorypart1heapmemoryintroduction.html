@@ -1,0 +1,291 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Memory, Part 1: Heap Memory Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Memory, Part 1: Heap Memory Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Memory, Part 1: Heap Memory Introduction
+            </div>
+            <h3>Memory, Part 1: Heap Memory Introduction</h3>
+
+<h2>What happens when I call malloc?</h2>
+<p>The function <code>malloc</code> is a C library call and is used to reserve a contiguous block of memory. Unlike stack memory, the memory remains allocated until <code>free</code> is called with the same pointer. There is also <code>calloc</code> and <code>realloc</code> which are discussed below.</p>
+<h2>Can malloc fail?</h2>
+<p>If <code>malloc</code> fails to reserve any more memory then it returns <code>NULL</code>. Robust programs should check the return value. If your code assumes <code>malloc</code> succeeds and it does not, then your program will likely crash (segfault) when it tries to write to address 0.</p>
+<h2>Where is the heap and how big is it?</h2>
+<p>The heap is part of the process memory and it does not have a fixed size. Heap memory allocation is performed by the C library when you call <code>malloc</code> (<code>calloc</code>, <code>realloc</code>) and <code>free</code>.</p>
+<p>First a quick review on process memory: A process is a running instance of your program. Each process has its own address space. For example on a 32 bit machine your process gets about 4 billion addresses to play with, however not all of these are valid or even mapped to actual physical memory (RAM). Inside the process's memory you will find the executable code, space for the stack, environment variables, global (static) variables and the heap.</p>
+<p>By calling <code>sbrk</code> the C library can increase the size of the heap as your program demands more heap memory. As the heap and stack (one for each thread) need to grow, we put them at opposite ends of the address space. So for typical architectures the heap will grows upwards and the stack grows downwards. If we write a multi-threaded program (more about that later) we will need multiple stacks (one per thread) but there's only ever one heap.</p>
+<p>On typical architectures, the heap is part of the <code>Data segment</code> and starts just above the code and global variables. </p>
+<h2>Do programs need to call brk or sbrk?</h2>
+<p>Not typically (though calling <code>sbrk(0)</code> can be interesting because it tells you where your heap currently ends). Instead programs use <code>malloc,calloc,realloc</code> and <code>free</code> which are part of the C library. The internal implementation of these functions will call <code>sbrk</code> when additional heap memory is required.</p>
+<pre class="highlight"><code class="language-C">void *top_of_heap = sbrk(0);
+malloc(16384);
+void *top_of_heap2 = sbrk(0);
+printf(&quot;The top of heap went from %p to %p \n&quot;, top_of_heap, top_of_heap2);</code></pre>
+
+
+<p>Example output: <code>The top of heap went from 0x4000 to 0xa000</code></p>
+<h2>What is calloc?</h2>
+<p>Unlike <code>malloc</code>, <code>calloc</code> initializes memory contents to zero and also takes two arguments (the number of items and the size in bytes of each item). A naive but readable implementation of <code>calloc</code> looks like this:</p>
+<pre class="highlight"><code class="language-C">void *calloc(size_t n, size_t size)
+{
+    size_t total = n * size; // Does not check for overflow!
+    void *result = malloc(total);
+
+    if (!result) return NULL;
+
+// If we're using new memory pages 
+// just allocated from the system by calling sbrk
+// then they will be zero so zero-ing out is unnecessary,
+
+    memset(result, 0, total);
+    return result; 
+}</code></pre>
+
+
+<p>An advanced discussion of these limitations is <a href="http://locklessinc.com/articles/calloc/">here</a>.</p>
+<p>Programmers often use <code>calloc</code> rather than explicitly calling <code>memset</code> after <code>malloc</code>, to set the memory contents to zero. Note <code>calloc(x,y)</code> is identical to <code>calloc(y,x)</code>, but you should follow the conventions of the manual.</p>
+<pre class="highlight"><code class="language-C">// Ensure our memory is initialized to zero
+link_t *link  = malloc(256);
+memset(link, 0, 256); // Assumes malloc returned a valid address!
+
+link_t *link = calloc(1, 256); // safer: calloc(1, sizeof(link_t));</code></pre>
+
+
+<h2>Why is the memory that is first returned by sbrk initialized to zero?</h2>
+<p>If the operating system did not zero out contents of physical RAM it might be possible for one process to learn about the memory of another process that had previously used the memory. This would be a security leak.</p>
+<p>Unfortunately this means that for <code>malloc</code> requests before any memory has been freed and simple programs (which end up using newly reserved memory from the system) the memory is <em>often</em> zero. Then programmers mistaken write C programs that assume malloc'd memory will <em>always</em> be zero.</p>
+<pre class="highlight"><code class="language-C">char* ptr = malloc(300);
+// contents is probably zero because we get brand new memory
+// so beginner programs appear to work!
+// strcpy(ptr, &quot;Some data&quot;); // work with the data
+free(ptr);
+// later
+char *ptr2 = malloc(308); // Contents might now contain existing data and is probably not zero</code></pre>
+
+
+<h2>Why doesn't malloc always initialize memory to zero?</h2>
+<p>Performance! We want malloc to be as fast as possible. Zeroing out memory may be unnecessary.</p>
+<h2>What is realloc and when would you use it?</h2>
+<p><code>realloc</code> allows you to resize an existing memory allocation that was previously allocated on the heap (via malloc,calloc or realloc). The most common use of realloc is to resize memory used to hold an array of values.A naive but readable version of realloc is suggested below</p>
+<pre class="highlight"><code class="language-C">void * realloc(void * ptr, size_t newsize) {
+  // Simple implementation always reserves more memory
+  // and has no error checking
+  void *result = malloc(newsize); 
+  size_t oldsize =  ... //(depends on allocator's internal data structure)
+  if (ptr) memcpy(result, ptr, newsize &amp;lt; oldsize ? newsize : oldsize);
+  free(ptr);
+  return result;
+}</code></pre>
+
+
+<p>An INCORRECT use of realloc is shown below:</p>
+<pre class="highlight"><code class="language-C">int *array = malloc(sizeof(int) * 2);
+array[0] = 10; array[1]; = 20;
+// Ooops need a bigger array - so use realloc..
+realloc (array, 3); // ERRORS!
+array[2] = 30; </code></pre>
+
+
+<p>The above code contains two mistakes. Firstly we needed 3*sizeof(int) bytes not 3 bytes.<br />
+Secondly realloc may need to move the existing contents of the memory to a new location. For example, there may not be sufficient space because the neighboring bytes are already allocated. A correct use of realloc is shown below.</p>
+<pre class="highlight"><code class="language-C">array = realloc(array, 3 * sizeof(int));
+// If array is copied to a new location then old allocation will be freed.</code></pre>
+
+
+<p>A robust version would also check for a <code>NULL</code> return value. Note <code>realloc</code> can be used to grow and shrink allocations. </p>
+<h2>Where can I read more?</h2>
+<p>See <a href="http://man7.org/linux/man-pages/man3/malloc.3.html">the man page</a>!</p>
+<h2>How important is that memory allocation is fast?</h2>
+<p>Very! Allocating and de-allocating heap memory is a common operation in most applications.</p>
+<h2>What is the silliest malloc and free implementation and what is wrong with it?</h2>
+<pre class="highlight"><code class="language-C">void* malloc(size_t size)
+// Ask the system for more bytes by extending the heap space. 
+// sbrk Returns -1 on failure
+   void *p = sbrk(size); 
+   if(p == (void *) -1) return NULL; // No space left
+   return p;
+}
+void free() {/* Do nothing */}</code></pre>
+
+
+<p>The above implementation suffers from two major drawbacks:<br />
+<em> System calls are slow (compared to library calls). We should reserve a large amount of memory and only occasionally ask for more from the system.<br />
+</em> No reuse of freed memory. Our program never re-uses heap memory - it just keeps asking for a bigger heap.</p>
+<p>If this allocator was used in a typical program, the process would quickly exhaust all available memory.<br />
+Instead we need an allocator that can efficiently use heap space and only ask for more memory when necessary.</p>
+<h2>What are placement strategies?</h2>
+<p>During program execution memory is allocated and de-allocated (freed), so there will be gaps (holes) in the heap memory that can be re-used for future memory requests. The memory allocator needs to keep track of which parts of the heap are currently allocated and which are parts are available.</p>
+<p>Suppose our current heap size is 64K, though not all of it is in use because some earlier malloc'd memory has already been freed by the program: </p>
+<table>
+<thead>
+<tr>
+<th>16KB free</th>
+<th>10KB allocated</th>
+<th>1KB free</th>
+<th>1KB allocated</th>
+<th>30KB free</th>
+<th>4KB allocated</th>
+<th>2KB free</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<p>If a new malloc request for 2KB is executed (<code>malloc(2048)</code>), where should <code>malloc</code> reserve the memory? It could use the last 2KB hole (which happens to be the perfect size!) or it could split one of the other two free holes. These choices represent different placement strategies.</p>
+<p>Whichever hole is chosen, the allocator will need to split the hole into two: The newly allocated space (which will be returned to the program) and a smaller hole (if there is spare space left over).</p>
+<p>A perfect-fit strategy finds the smallest hole that is of sufficient size (at least 2KB):</p>
+<table>
+<thead>
+<tr>
+<th>16KB free</th>
+<th>10KB allocated</th>
+<th>1KB free</th>
+<th>1KB allocated</th>
+<th>30KB free</th>
+<th>4KB allocated</th>
+<th><code>2KB HERE!</code></th>
+<th></th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<p>A worst-fit strategy finds the largest hole that is of sufficient size (so break the 30KB hole into two):</p>
+<table>
+<thead>
+<tr>
+<th>16KB free</th>
+<th>10KB allocated</th>
+<th>1KB free</th>
+<th>1KB allocated</th>
+<th><code>2KB HERE!</code></th>
+<th><code>28KB free</code></th>
+<th>4KB allocated</th>
+<th>2KB free</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<p>A first-fit strategy finds the first available hole that is of sufficient size (break the 16KB hole into two):</p>
+<table>
+<thead>
+<tr>
+<th><code>2KB HERE!</code></th>
+<th><code>14KB free</code></th>
+<th>10KB allocated</th>
+<th>1KB free</th>
+<th>1KB allocated</th>
+<th>30KB free</th>
+<th>4KB allocated</th>
+<th>2KB free</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<h2>What is fragmentation?</h2>
+<p>In the example below, of the 64KB of heap memory, 17KB is allocated, and 47KB is free. However the largest available block is only 30KB because our available unallocated heap memory is fragmented into smaller pieces. </p>
+<table>
+<thead>
+<tr>
+<th><code>16KB free</code></th>
+<th>10KB allocated</th>
+<th>1KB free</th>
+<th>1KB allocated</th>
+<th>30KB free</th>
+<th>4KB allocated</th>
+<th>2KB free</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<h2>What effect do placement strategies have on fragmentation and performance?</h2>
+<p>Different strategies affect the fragmentation of heap memory in non-obvious ways, which only are discovered by mathematical analysis or careful simulations under real-world conditions (for example simulating the memory allocation requests of a database or webserver).<br />
+For example, best-fit at first glance appears to be an excellent strategy however, if we can not find a perfectly-sized hole then this placement creates many tiny unusable holes, leading to high fragmentation. It also requires a scan of all possible holes.</p>
+<p>First fit has the advantage that it will not evaluate all possible placements and therefore be faster. </p>
+<p>Since Worst-fit targets the largest unallocated space, it is a poor choice if large allocations are required.</p>
+<p>In practice first-fit and next-fit (which is not discussed here) are often common placement strategy. Hybrid approaches and many other alternatives exist (see implementing a memory allocator page).</p>
+<h2>What are the challenges of writing a heap allocator?</h2>
+<p>The main challenges are,<br />
+<em> Need to minimize fragmentation (i.e. maximize memory utilization)<br />
+</em> Need high performance<br />
+* Fiddly implementation (lots of pointer manipulation using linked lists and pointer arithmetic)</p>
+<p>Some additional comments:</p>
+<p>Both fragmentation and performance depend on the application allocation profile, which can be evaluated but not predicted and in practice, under-specific usage conditions, a special-purpose allocator can often out-perform a general purpose implementation.</p>
+<p>The allocator doesn't know the program's memory allocation requests in advance. Even if we did, this is the <a href="http://en.wikipedia.org/wiki/Knapsack_problem">Knapsack problem</a> which is known to be NP hard!</p>
+<h2>How do you implement a memory allocator?</h2>
+<p>Good question. <a href="https://github.com/angrave/SystemProgramming/wiki/Memory%2C-Part-2%3A-Implementing-a-Memory-Allocator">Implementing a memory allocator</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

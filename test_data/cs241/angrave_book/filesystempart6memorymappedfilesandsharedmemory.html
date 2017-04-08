@@ -1,0 +1,187 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 6: Memory mapped files and Shared memory</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 6: Memory mapped files and Shared memory</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 6: Memory mapped files and Shared memory
+            </div>
+            <h3>File System, Part 6: Memory mapped files and Shared memory</h3>
+
+<h2>How does the operating system load my process and libraries into memory?</h2>
+<p>By mapping the files' contents into the address-space of the process.<br />
+If many programs only need read-access to the same file (e.g. /bin/bash, the C library) then the same physical memory can be shared between multiple processes.</p>
+<p>The same mechanism can be used by programs to directly map files into memory</p>
+<h2>How do I map a file into memory?</h2>
+<p>A simple program to map a file into memory is shown below. The key points to notice are:<br />
+<em> mmap requires a filedescriptor, so we need to <code>open</code> the file first<br />
+</em> We seek to our desired size and write one byte to ensure that the file is sufficient length<br />
+* When finished call munmap to unmap the file from memory.</p>
+<p>This example also shows the preprocessor constants "<strong>LINE</strong>" and "<strong>FILE</strong>" that hold the current line number and filename of the file currently being compiled.</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt;
+#include &amp;lt;sys/stat.h&amp;gt;
+#include &amp;lt;sys/mman.h&amp;gt;
+#include &amp;lt;fcntl.h&amp;gt;
+#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;errno.h&amp;gt;
+#include &amp;lt;string.h&amp;gt;
+
+
+int fail(char *filename, int linenumber) { 
+  fprintf(stderr, &quot;%s:%d %s\n&quot;, filename, linenumber, strerror(errno)); 
+  exit(1);
+  return 0; /*Make compiler happy */
+}
+#define QUIT fail(__FILE__, __LINE__ )
+
+int main() {
+  // We want a file big enough to hold 10 integers  
+  int size = sizeof(int) * 10;
+
+  int fd = open(&quot;data&quot;, O_RDWR | O_CREAT | O_TRUNC, 0600); //6 = read+write for me!
+
+  lseek(fd, size, SEEK_SET);
+  write(fd, &quot;A&quot;, 1);
+
+  void *addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  printf(&quot;Mapped at %p\n&quot;, addr);
+  if (addr == (void*) -1 ) QUIT;
+
+  int *array = addr;
+  array[0] = 0x12345678;
+  array[1] = 0xdeadc0de;
+
+  munmap(addr,size);
+  return 0;
+
+}</code></pre>
+
+
+<p>The contents of our binary file can be listed using hexdump</p>
+<pre class="highlight"><code>$ hexdump data
+0000000 78 56 34 12 de c0 ad de 00 00 00 00 00 00 00 00
+0000010 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+0000020 00 00 00 00 00 00 00 00 41   </code></pre>
+
+
+<p>The careful reader may notice that our integers were written in least-significant-byte format (because that is the endianess of the CPU) and that we allocated a file that is one byte too many!</p>
+<p>The <code>PROT_READ | PROT_WRITE</code> options specify the virtual memory protection. The option <code>PROT_EXEC</code> (not used here) can be set to allow CPU execution of instructions in memory (e.g. this would be useful if you mapped an executable or library).</p>
+<h2>What are the advantages of memory mapping a file</h2>
+<p>For many applications the main advantages are:<br />
+Simplified coding - the file data is immediately available. No need to parse the incoming data and store it in new memory structures.<br />
+Sharing of files - memory mapped files are particularly efficient when the same data is shared between multiple processes.</p>
+<p>Note for simple sequential processing memory mapped files are not necessarily faster than standard 'stream-based' approaches of <code>read</code> / fscanf etc. </p>
+<h2>How do I share memory between a parent and child process?</h2>
+<p>Easy -  Use <code>mmap</code> without a file - just specify the MAP_ANONYMOUS and MAP_SHARED options!</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt;
+#include &amp;lt;sys/stat.h&amp;gt;
+#include &amp;lt;sys/mman.h&amp;gt; /* mmap() is defined in this header */
+#include &amp;lt;fcntl.h&amp;gt;
+#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;errno.h&amp;gt;
+#include &amp;lt;string.h&amp;gt;
+
+int main() {
+
+  int size = 100 * sizeof(int);  
+  void *addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+  printf(&quot;Mapped at %p\n&quot;, addr);
+
+  int *shared = addr;
+  pid_t mychild = fork();
+  if (mychild &amp;gt; 0) {
+    shared[0] = 10;
+    shared[1] = 20;
+  } else {
+    sleep(1); // We will talk about synchronization later
+    printf(&quot;%d\n&quot;, shared[1] + shared[0]);
+  }
+
+  munmap(addr,size);
+  return 0;
+}</code></pre>
+
+
+<h2>Can I use shared memory for IPC ?</h2>
+<p>Yes! As a simple example you could reserve just a few bytes and change the value in shared memory when you want the child process to quit.<br />
+Sharing memory is a very efficient form of inter-process communication because there is no copying overhead - the two processes literally share the same <em>physical</em> frame of memory.</p>
+<p><a href="https://github.com/angrave/SystemProgramming/wiki/File-System,-Part-7:-Scalable-and-Reliable-Filesystems">Go to File System: Part 7</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>
