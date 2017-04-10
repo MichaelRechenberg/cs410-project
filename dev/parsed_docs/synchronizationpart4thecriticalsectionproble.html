@@ -1,0 +1,54 @@
+As already discussed in [[Synchronization, Part 3: Working with Mutexes And Semaphores]], there are critical parts of our code that can only be executed by one thread at a time. We describe this requirement as 'mutual exclusion'; only one thread (or process) may have access to the shared resource.
+In multi-threaded programs we can wrap a critical section with mutex lock and unlock calls:
+How would we implement these lock and unlock calls? Can we create an algorithm that assures mutual exclusion? An incorrect implementation is shown below, 
+At first glance, the code appears to work; if one thread attempts to locks the mutex, a later thread must wait until the lock is cleared. However this implementation does not satisfy Mutual Exclusion. Let's take a close look at this 'implementation' from the point of view of two threads running around the same time. In the table below times runs from top to bottom-
+To simplify the discussion we consider only two threads. Note these arguments work for threads and processes and the classic CS literature discusses these problem in terms of two processes that need exclusive access (i.e. mutual exclusion) to a critical section or shared resource.
+Raising a flag represents a thread/process's intention to enter the critical section.
+Remember that the psuedo-code outlined below is part of a larger program; the thread or process will typically need to enter the critical section many times during the lifetime of the process. So imagine each example as wrapped inside a loop where for a random amount of time the thread or process is working on something else.
+Is there anything wrong with candidate solution described below?
+Answer: Candidate solution #1 also suffers a race condition i.e. it does not satisfy Mutual Exclusion because both threads/processes could read each other's flag value (=lowered) and continue. 
+This suggests we should raise the flag before checking the other thread's flag - which is candidate solution #2 below.
+Candidate #2 satisfies mutual exclusion - it is impossible for two threads to be inside the critical section at the same time. However this code suffers from deadlock! Suppose two threads wish to enter the critical section at the same time:
+This suggests we should use a turn-based variable to try to resolve who should proceed. 
+The following candidate solution #3 uses a turn-based variable to politely allow one thread and then the other to continue
+Candidate #3 satisfies mutual exclusion (each thread or process gets exclusive access to the Critical Section), however both threads/processes must take a strict turn-based approach to using the critical section; i.e. they are forced into an alternating critical section access pattern. For example, if thread 1 wishes to read a hashtable every millisecond but another thread writes to a hashtable every second, then the reading thread would have to wait another 999ms before being able to read from the hashtable again. This 'solution' is not effective, because our threads should be able to make progress and enter the critical section if no other thread is currently in the critical section.
+There are three main desirable properties that we desire in a solution the critical section problem
+ Mutual Exclusion - the thread/process gets exclusive access; others must wait until it exits the critical section.
+ Bounded Wait - if the thread/process has to wait, then it should only have to wait for a finite,  amount of time (infinite waiting times are not allowed!). The exact definition of bounded wait is that there is an upper (non-infinite) bound on the number of times any other process can enter its critical section before the given process enters.
+* Progress - if no thread/process is inside the critical section, then the thread/process should be able to proceed (make progress) without having to wait.
+With these ideas in mind let's examine another candidate solution that uses a turn-based flag only if two threads both required access at the same time.
+Is the following a correct solution to CSP?
+One instructor and another CS faculty member initially thought so! However, analyzing these solutions is tricky. Even peer-reviewed papers on this specific subject contain incorrect solutions! At first glance it appears to satisfy Mutual Exclusion, Bounded Wait and Progress: The turn-based flag is only used in the event of a tie (so Progress and Bounded Wait is allowed) and mutual exclusion appears to be satisfied. However.... Perhaps you can find a counter-example?
+Candidate #4 fails because a thread does not wait until the other thread lowers their flag. After some thought (or inspiration) the following scenario can be created to demonstrate how Mutual Exclusion is not satisfied.
+Imagine the first thread runs this code twice (so the the turn flag now points to the second thread). While the first thread is still inside the Critical Section, the second thread arrives. The second thread can immediately continue into the Critical Section!
+Peterson published his novel and surprisingly simple solution in a 2 page paper in 1981. A version of his algorithm is shown below that uses a shared variable turn: 
+This solution satisfies Mutual Exclusion, Bounded Wait and Progress. If thread #2 has set turn to 2 and is currently inside the critical section. Thread #1 arrives, sets the turn back to 1 and now waits until thread 2 lowers the flag.
+Link to Peterson's original article pdf:
+G. L. Peterson: "Myths About the Mutual Exclusion Problem", Information Processing Letters 12(3) 1981, 115–116
+No, Dekkers Algorithm (1962) was the first provably correct solution. A version of the algorithm is below.
+Notice how the process's flag is always raised during the critical section no matter if the loop is iterated zero, once or more times. Further the flag can be interpreted as an immediate intent to enter the critical section. Only if the other process has also raised the flag will one process defer, lower their intent flag and wait.
+Yes - and with a bit searching it is possible even today to find it in production for specific simple mobile processors: Peterson's algorithm is used to implement low-level Linux Kernel locks for the Tegra mobile processor (a system-on-chip ARM process and GPU core by Nvidia)
+https://android.googlesource.com/kernel/tegra.git/+/android-tegra-3.10/arch/arm/mach-tegra/sleep.S#58
+However in general, CPUs and C compilers can re-order CPU instructions or use CPU-core-specific local cache values that are stale if another core updates the shared variables. Thus a simple pseudo-code to C implementation is too naive for most platforms. You can stop reading now.
+Oh... you decided to keep reading. Well, here be dragons! Don't say we didn't warn you. Consider this advanced and gnarly topic but (spoiler alert) a happy ending.
+Consider the following code,
+An efficient compiler would infer that flag2 variable is never changed inside the loop, so that test can be optimized to while(true) 
+Using volatile goes someway to prevent compiler optimizations of this kind.
+Independent instructions can be re-ordered by an optimizing compiler or at runtime by an out-of-order execution optimization by the CPU. These sophisticated optimizations if the code requires variables to be modified and checked and a precise order.
+A related challenge is that CPU cores include a data cache to store recently read or modified main memory values. Modified values may not be written back to main memory or re-read from memory immediately. Thus data changes, such as the state of a flag and turn variable in the above examples, may not be shared between two CPU codes. 
+But there is happy ending. Fortunately, modern hardware addresses these issues using 'memory fences' (also known as memory barrier) CPU instructions to ensure that main memory and the CPUs' cache is in a reasonable and coherent state. Higher level synchronization primitives, such as pthread_mutex_lock are will call these CPU instructions as part of their implementation. Thus, in practice, surrounding critical section with a mutex lock and unlock calls is sufficient to ignore these lower-level problems.
+Further reading: we suggest the following web post that discusses implementing Peterson's algorithm on an x86 process and the linux documentation on memory barriers.
+http://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/
+http://lxr.free-electrons.com/source/Documentation/memory-barriers.txt
+Good question. Next lecture...
+What is the Critical Section Problem?
+Candidate solutions to the critical section problem.
+Turn-based solutions
+Desired properties for solutions to the Critical Section Problem?
+Turn and Flag solutions
+What is Peterson's solution?
+Was Peterson's solution the first solution?
+Can I just implement Peterson's (or Dekkers) algorithm in C or assembler?
+How do we implement Critical Section Problem on hardware?
+Synchronization, Part 4: The Critical Section Proble
+Synchronization, Part 4: The Critical Section Proble

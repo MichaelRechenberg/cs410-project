@@ -1,0 +1,143 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RPC, Part 1: Introduction to Remote Procedure Calls</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">RPC, Part 1: Introduction to Remote Procedure Calls</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; RPC, Part 1: Introduction to Remote Procedure Calls
+            </div>
+            <h3>RPC, Part 1: Introduction to Remote Procedure Calls</h3>
+
+<h2>What is RPC?</h2>
+<p>Remote Procedure Call. RPC is the idea that we can execute a procedure (function) on a different machine. In practice the procedure may execute on the same machine, however it may be in a different context - for example under a different user with different permissions and different lifecycle.</p>
+<h2>What is Privilege Separation?</h2>
+<p>The remote code will execute under a different user and with different privileges from the caller. In practice the remote call may execute with more or fewer privileges than the caller. This in principle can be used to improve the security of a system (by ensuring components operate with least privilege). Unfortunately, security concerns need to be carefully assessed to ensure that RPC mechanisms cannot be subverted to perform unwanted actions. For example, an RPC implementation may implicitly trust any connected client to perform any action, rather than a subset of actions on a subset of the data.</p>
+<h2>What is stub code? What is marshalling?</h2>
+<p>The stub code is the necessary code to hide the complexity of performing a remote procedure call. One of the roles of the stub code is to <em>marshall</em> the necessary data into a format that can be sent as a byte stream to a remote server.</p>
+<pre class="highlight"><code class="language-C">// On the outside 'getHiscore' looks like a normal function call
+// On the inside the stub code performs all of the work to send and receive the data to and from the remote machine.
+
+int getHiscore(char* game) {
+  // Marshall the request into a sequence of bytes:
+  char* buffer;
+  asprintf(&amp;amp;buffer,&quot;getHiscore(%s)!&quot;, name);
+
+  // Send down the wire (we do not send the zero byte; the '!' signifies the end of the message)
+  write(fd, buffer, strlen(buffer) );
+
+  // Wait for the server to send a response
+  ssize_t bytesread = read(fd, buffer, sizeof(buffer));
+
+  // Example: unmarshal the bytes received back from text into an int
+  buffer[bytesread] = 0; // Turn the result into a C string
+
+  int score= atoi(buffer);
+  free(buffer);
+  return score;
+}</code></pre>
+
+
+<h2>What is server stub code? What is unmarshalling?</h2>
+<p>The server stub code will receive the request, unmarshall the request into a valid in-memory data call the underlying implementation and send the result back to the caller.</p>
+<h2>How do you send an int? float? a struct?  A linked list? A graph?</h2>
+<p>To implement RPC you need to decide (and document) which conventions you will use to serialize the data into a byte sequence. Even a simple integer has several common choices:<br />
+<em> Signed or unsigned?<br />
+</em> ASCII<br />
+<em> Fixed number of bytes or variable depending on magnitude<br />
+</em> Little or Big endian binary format?</p>
+<p>To marshall a struct, decide which fields need to be serialized. It may not be necessary to send all data items (for example, some items may be irrelevant to the specific RPC or can be re-computed by the server from the other data items present).</p>
+<p>To marshall a linked list it is unnecessary to send the link pointers- just stream the values. As part of unmarshalling the server can recreate a linked list structure from the byte sequence.</p>
+<p>By starting at the head node/vertex, a simple tree can be recursively visited to create a serialized version of the data. A cyclic graph will usually require additional memory to ensure that each edge and vertex is processed exactly once.</p>
+<h2>What is an IDL (Interface Design Language)?</h2>
+<p>Writing stub code by hand is painful, tedious, error prone, difficult to maintain and difficult to reverse engineer the wire protocol from the implemented code. A better approach is specify the data objects, messages and services and automatically generate the client and server code.</p>
+<p>A modern example of an Interface Design Language is Google's Protocol Buffer .proto files.</p>
+<h2>Complexity and challenges of RPC vs local calls?</h2>
+<p>Remote Procedure Calls are significantly slower (10x to 100x) and more complex than local calls. An RPC must marshall data into a wire-compatible format. This may require multiple passes through the data structure, temporary memory allocation and transformation of the data representation.</p>
+<p>Robust RPC stub code must intelligently handle network failures and versioning. For example, a server may have to process requests from clients that are still running an early version of the stub code.</p>
+<p>A secure RPC will need to implement additional security checks (including authentication and authorization), validate data and encrypt communication between the client and host.</p>
+<h2>Transferring large amounts of structured data</h2>
+<p>Let's examine three methods of transferring data using 3 different formats - JSON, XML and Google Protocol Buffers. JSON and XML are text-based protocols. Examples of JSON and XML messages are below.</p>
+<pre class="highlight"><code class="language-xml">&amp;lt;ticket&amp;gt;&amp;lt;price currency='dollar'&amp;gt;10&amp;lt;/price&amp;gt;&amp;lt;vendor&amp;gt;travelocity&amp;lt;/vendor&amp;gt;&amp;lt;/ticket&amp;gt;</code></pre>
+
+
+<pre class="highlight"><code class="language-javascript">{ 'currency':'dollar' , 'vendor':'travelocity', 'price':'10' }</code></pre>
+
+
+<p>Google Protocol Buffers is an open-source efficient binary protocol that places a strong emphasis on high throughput with low CPU overhead and minimal memory copying. Implementations exist for multiple languages including Go, Python, C++ and C. This means client and server stub code in multiple languages can be generated from the .proto specification file to marshall data to and from a binary stream.</p>
+<p>Google Protocol Buffers reduces the versioning problem by ignoring unknown fields that are present in a message. See the introduction to Protocol Buffers for more information.</p>
+<p>[[<a href="https://developers.google.com/protocol-buffers/docs/overview">https://developers.google.com/protocol-buffers/docs/overview</a>]]</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

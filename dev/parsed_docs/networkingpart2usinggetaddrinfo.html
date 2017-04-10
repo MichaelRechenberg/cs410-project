@@ -1,0 +1,30 @@
+The function getaddrinfo can convert a human readable domain name (e.g. www.illinois.edu) into an IPv4 and IPv6 address. In fact it will return a linked-list of addrinfo structs:
+It's very easy to use. For example, suppose you wanted to find out the numeric IPv4 address of a webserver at www.bbc.com. We do this in two stages. First use getaddrinfo to build a linked-list of possible connections. Secondly use getnameinfo to convert the binary address into a readable form.
+Typical output:
+Magic! No seriously, a system called "DNS" (Domain Name Service) is used. If a machine does not hold the answer locally then it sends a UDP packet to a local DNS server. This server in turn may query other upstream DNS servers. 
+DNS by itself is fast but not secure. DNS requests are not encrypted and susceptible to 'man-in-the-middle' attacks. For example, a coffee shop internet connection could easily subvert your DNS requests and send back different IP addresses for a particular domain
+TODO
+There are three basic system calls you need to connect to a remote machine:
+The getaddrinfo call if successful, creates a linked-list of addrinfo structs and sets the given pointer to point to the first one.
+The socket call creates an outgoing socket and returns a descriptor (sometimes called a 'file descriptor') that can be used with read and write etc.In this sense it is the network analog of open that opens a file stream - except that we haven't connected the socket to anything yet!
+Finally the connect call attempts the connection to the remote machine. We pass the original socket descriptor and also the socket address information which is stored inside the addrinfo structure. There are different kinds of socket address structures (e.g. IPv4 vs IPv6) which can require more memory. So in addition to passing the pointer, the size of the structure is also passed:
+As part of the clean up code call freeaddrinfo on the top-most addrinfo struct:
+No. Error handling with getaddrinfo is a little different:
+  The return value is the error code (i.e. don't use errno)
+ Use gai_strerror to get the equivalent short English error text:
+Yes! Use the addrinfo structure that is passed into getaddrinfo to define the kind of connection you'd like.
+For example, to specify stream-based protocols over IPv6:
+The old function gethostbyname is deprecated; it's the old way convert a host name into an IP address. The port address still needs to be manually set using htons function. It's much easier to write code to support IPv4 AND IPv6 using the newer getaddrinfo
+Yes and no. It's easy to create a simple TCP client - however network communications offers many different levels of abstraction and several attributes and options that can be set at each level of abstraction (for example we haven't talked about setsockopt which can manipulate options for the socket).
+For more information see this guide.
+How do I use getaddrinfo to convert the hostname into an IP address?
+How is www.cs.illinois.edu converted into an IP address?
+Is DNS secure?
+How do I connect to a TCP server (e.g. web server?)
+How do I free the memory allocated for the linked-list of addrinfo structs?
+If getaddrinfo fails can I use strerror to print out the error?
+Can I request only IPv4 or IPv6 connection? TCP only?
+What about code examples that use gethostbyname?
+Is it that easy!?
+Networking, Part 2: Using getaddrinfo
+Networking, Part 2: Using getaddrinfo

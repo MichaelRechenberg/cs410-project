@@ -1,0 +1,23 @@
+The reader-writer problem appears in many different contexts. For example a web server cache needs to quickly serve the same static page for many thousands of requests. Occasionally however an author may decide to update the page.
+We will examine one specific form of the reader-writer problem where there are many readers and some occasional writers and we need to ensure that a writer gets exclusive access. For performance however readers should be able to perform the read without waiting for another reader. 
+See [[Synchronization,-Part-7:-The-Reader-Writer-Problem]] for part 1
+Candidate solutions 1 and 2 are discussed in [[part 1|Synchronization,-Part-7:-The-Reader-Writer-Problem]].
+In the code below for clarity lock and cond_wait are shortened versions pthread_mutex_lock and pthread_cond_wait etc. respectively
+Also remember that pthread_cond_wait performs Three actions. Firstly it atomically unlocks the mutex and then sleeps (until it is woken by pthread_cond_signal or pthread_cond_broadcast). Thirdly the awoken thread must re-acquire the mutex lock before returning. Thus only one thread can actually be running inside the critical section defined by the lock and unlock() methods.
+Implementation #3 below ensures that a reader will enter the cond_wait if there are any writers writing.
+However only one reader a time can read because candidate #3 did not unlock the mutex. A better version unlocks before reading :
+Does this mean that a writer and read could read and write at the same time? No! First of all, remember cond_wait requires the thread re-acquire the  mutex lock before returning. Thus only one thread can be executing code inside the critical section (marked with **) at a time!
+Writers must wait for everyone. Mutual exclusion is assured by the lock. 
+Candidate #3 above also uses pthread_cond_signal ; this will only wake up one thread. For example, if many readers are waiting for the writer to complete then only one sleeping reader will be awoken from their slumber. The reader and writer should use cond_broadcast so that all threads should wake up and check their while-loop condition.
+Candidate #3 above suffers from starvation. If readers are constantly arriving then a writer will never be able to proceed (the 'reading' count never reduces to zero). This is known as starvation and would be discovered under heavy loads. Our fix is to implement a bounded-wait for the writer. If a writer arrives they will still need to wait for existing readers however future readers must be placed in a "holding pen" and wait for the writer to finish. The "holding pen" can be implemented using a variable and a condition variable (so that we can wake up the threads once the writer has finished).
+Our plan is that when a writer arrives, and before waiting for current readers to finish, register our intent to write (by incrementing a counter 'writer'). Sketched below - 
+And incoming readers will not be allowed to continue while writer is nonzero. Notice 'writer' indicates a writer has arrived, while 'reading' and 'writing' counters indicate there is an active reader or writer.
+Below is our first working solution to the Reader-Writer problem. 
+Note if you continue to read about the "Reader Writer problem" then you will discover that we solved the "Second Reader Writer problem" by giving writers preferential access to the lock. This solution is not optimal. However it satisfies our original problem (N active readers, single active writer, avoids starvation of the writer if there is a constant stream of readers). 
+Can you identify any improvements? For example, how would you improve the code so that we only woke up readers or one writer? 
+The introduction
+Candidate solution #3
+Starving writers
+Candidate solution #4
+Synchronization, Part 9: The Reader Writer Problem (part 2)
+Synchronization, Part 9: The Reader Writer Problem (part 2)

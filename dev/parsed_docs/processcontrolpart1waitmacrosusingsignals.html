@@ -1,0 +1,24 @@
+You can find the lowest 8 bits of the child's exit value (the return value of main() or value included in exit()): Use the "Wait macros" - typically you will use "WIFEXITED" and "WEXITSTATUS" . See wait/waitpid man page for more information).
+Yes ! You can temporarily pause a running process by sending it a SIGSTOP signal.
+If it succeeds it will freeze a process; i.e. the process will not be allocated anymore CPU time.
+To allow a process to resume execution send it the SIGCONT signal.
+For example,
+Here's program that slowly prints a dot every second, up to 59 dots.
+We will first start the process in the background (notice the & at the end).
+Then send it a signal from the shell process by using the kill command.
+In C, send a signal to the child using kill POSIX call,
+As we saw above there is also a kill command available in the shell
+e.g. get a list of running processes and then terminate process 45 and process 46
+We will return to signals later on - this is just a short introduction. On a Linux system, see man -s7 signal if you are interested in finding out more (for example a list of system and library calls that are async-signal-safe.
+There are strict limitations on the executable code inside a signal handler. Most library and system calls are not 'async-signal-safe' - they may be not use used inside a signal handler because they are not re-entrant safe. In a single-threaded program, signal handling momentarily interrupts the program execution to execute the signal handler code instead. Suppose your original program was interrupted while executing the library code of malloc ;  the memory structures used by malloc will not be in a consistent state. Calling printf (which uses malloc) as part of the signal handler is unsafe and will result in "undefined behavior" i.e. it is no longer a useful,predictable program. In practice your program might crash, compute or generate incorrect results or stop functioning ("deadlock"), depending on exactly what your program was executing when it was interrupted to execute the signal handler code.
+One common use of signal handlers is to set a boolean flag that is occasionally polled (read) as part of the normal running of the program. For example,
+The above code might appear to be correct on paper. However, we need to provide a hint to the compiler and to the CPU core that will execute the main() loop. We need to prevent a compiler optimization: The expression ! pleaseStop appears to be a loop invariant i.e. true forever, so can be simplified to true.  Secondly, we need to ensure that the value of pleaseStop is not cached using a CPU register and instead always read from and written to main memory. The sig_atomic_t type implies that all the bits of the variable can be read or modified as an "atomic operation" - a single uninterruptable operation. It is impossible to read a value that is composed of some new bit values and old bit values.
+By specifying pleaseStop with the correct type volatile sig_atomic_t we can write portable code where the main loop will be exited after the signal handler returns. The sig_atomic_t type can be as large as an int on most modern platforms but on embedded systems can be as small as a char and only able to represent (-127 to 127) values.
+Two examples of this pattern can be found in "COMP" a terminal based 1Hz 4bit computer (https://github.com/gto76/comp-cpp/blob/1bf9a77eaf8f57f7358a316e5bbada97f2dc8987/src/output.c#L121).
+Two boolean flags are used. One to mark the delivery of SIGINT (CTRL-C), and gracefully shutdown the program, and the other to mark SIGWINCH signal to detect terminal resize and redraw the entire display. 
+Can I find out the exit value of my child?
+Can I pause my child?
+How do I kill/stop/suspend my child from C?
+How can I detect "CTRL-C" and clean up gracefully?
+Process Control, Part 1: Wait macros, using signals
+Process Control, Part 1: Wait macros, using signals

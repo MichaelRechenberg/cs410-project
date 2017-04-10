@@ -1,0 +1,14 @@
+A POSIX pipe is almost like its real counterpart - you can stuff bytes down one end and they will appear at the other end in the same order. Unlike real pipes however, the flow is always in the same direction, one file descriptor is used for reading and the other for writing. The pipe system call is used to create a pipe.
+These file descriptors can be used with read -
+And write - 
+A common method of using pipes is to create the pipe before forking.
+The child can then send a message back to the parent:
+Short answer: Yes, but I'm not sure why you would want to LOL!
+Here's an example program that sends a message to itself:
+The problem with using a pipe in this fashion is that writing to a pipe can block i.e. the pipe only has a limited buffering capacity. If the pipe is full the writing process will block! The maximum size of the buffer is system dependent; typical values from  4KB upto 128KB.
+See [[Pipes, Part 2: Pipe programming secrets]]
+What is a pipe?
+How can I use pipe to communicate with a child process?
+Can I use pipes inside a single process?
+Pipes, Part 1: Introduction to pipes
+Pipes, Part 1: Introduction to pipes

@@ -1,0 +1,266 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 4: Working with directories</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 4: Working with directories</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 4: Working with directories
+            </div>
+            <h3>File System, Part 4: Working with directories</h3>
+
+<h2>How do I find out if file (an inode) is a regular file or directory?</h2>
+<p>Use the <code>S_ISDIR</code> macro to check the mode bits in the stat struct:</p>
+<pre class="highlight"><code class="language-C">struct stat s;
+stat(&quot;/tmp&quot;, &amp;amp;s);
+if (S_ISDIR(s.st_mode)) { ... </code></pre>
+
+
+<p>Note, later we will write robust code to verify that the stat call succeeds (returns 0); if the <code>stat</code> call fails, we should assume the stat struct content is arbitrary.</p>
+<h2>How do I recurse into subdirectories?</h2>
+<p>First a puzzle - how many bugs can you find in the following code?</p>
+<pre class="highlight"><code class="language-C">void dirlist(char *path) {
+
+  struct dirent *dp;
+  DIR *dirp = opendir(path);
+  while ((dp = readdir(dirp)) != NULL) {
+     char newpath[strlen(path) + strlen(dp-&amp;gt;d_name) + 1];
+     sprintf(newpath,&quot;%s/%s&quot;, newpath, dp-&amp;gt;d_name);
+     printf(&quot;%s\n&quot;, dp-&amp;gt;d_name);
+     dirlist(newpath);
+  }
+}
+
+int main(int argc, char **argv) { dirlist(argv[1]); return 0; }</code></pre>
+
+
+<p>Did you find all 5 bugs?</p>
+<pre class="highlight"><code class="language-C">// Check opendir result (perhaps user gave us a path that can not be opened as a directory
+if (!dirp) { perror(&quot;Could not open directory&quot;); return; }
+// +2 as we need space for the / and the terminating 0
+char newpath[strlen(path) + strlen(dp-&amp;gt;d_name) + 2]; 
+// Correct parameter
+sprintf(newpath,&quot;%s/%s&quot;, path, dp-&amp;gt;d_name); 
+// Perform stat test (and verify) before recursing
+if (0 == stat(newpath,&amp;amp;s) &amp;amp;&amp;amp; S_ISDIR(s.st_mode)) dirlist(newpath)
+// Resource leak: the directory file handle is not closed after the while loop
+closedir(dirp);</code></pre>
+
+
+<h2>What are symbolic links? How do they work? How do I make one?</h2>
+<pre class="highlight"><code class="language-C">symlink(const char *target, const char *symlink);</code></pre>
+
+
+<p>To create a symbolic link in the shell use <code>ln -s</code></p>
+<p>To read the contents of the link as just a file use <code>readlink</code></p>
+<pre class="highlight"><code>$ readlink myfile.txt
+../../dir1/notes.txt</code></pre>
+
+
+<p>To read the meta-(stat) information of a symbolic link use <code>lstat</code> not <code>stat</code></p>
+<pre class="highlight"><code class="language-C">struct stat s;
+stat(&quot;myfile.txt&quot;, &amp;amp;s1); // stat info about  the notes.txt file
+lstat(&quot;myfile.txt&quot;, &amp;amp;s2); // stat info about the symbolic link</code></pre>
+
+
+<h2>Advantages of symbolic links</h2>
+<ul>
+<li>Can refer to a files that don't exist yet</li>
+<li>Unlike hard links, can refer to directories as well as regular files</li>
+<li>Can refer to files (and directories) that exist outside of the current file system</li>
+</ul>
+<p>Main disadvantage: Slower than regular files and directories. When the links contents are read, they must be interpreted as a new path to the target file.</p>
+<h2>What is <code>/dev/null</code> and when is it used?</h2>
+<p>The file <code>/dev/null</code> is a great place to store bits that you never need to read!<br />
+Bytes sent to <code>/dev/null/</code> are never stored - they are simply discarded. A common use of <code>/dev/null</code> is to discard standard output. For example,</p>
+<pre class="highlight"><code>$ ls . &amp;gt;/dev/null</code></pre>
+
+
+<h2>Why would I want to set a directory's sticky bit?</h2>
+<p>When a directory's sticky bit is set only the file's owner, the directory's owner, and the root user can rename (or delete) the file. This is useful when multiple users have write access to a common directory.</p>
+<p>A common use of the sticky bit is for the shared and writable <code>/tmp</code> directory.</p>
+<h2>Why do shell and script programs start with <code>#!/usr/bin/env python</code> ?</h2>
+<p>Ans: For portability!<br />
+While it is possible to write the fully qualified path to a python or perl interpreter, this approach is not portable because you may have installed python in a different directory.</p>
+<p>To overcome this use the <code>env</code> utility is used to find and execute the program on the user's path.<br />
+The env utility itself has historically been stored in <code>/usr/bin</code> - and it must be specified with an absolute path.</p>
+<h2>How do I make 'hidden' files i.e. not listed by "ls"? How do I list them?</h2>
+<p>Easy! Create files (or directories) that start with a "." - then (by default) they are not displayed by standard tools and utilities.</p>
+<p>This is often used to hide configuration files inside the user's home directory.<br />
+For example <code>ssh</code> stores its preferences inside a directory called <code>.sshd</code></p>
+<p>To list all files including the normally hidden entries use <code>ls</code> with  <code>-a</code> option </p>
+<pre class="highlight"><code>$ ls -a
+.           a.c         myls
+..          a.out           other.txt
+.secret </code></pre>
+
+
+<h2>What happens if I turn off the execute bit on directories?</h2>
+<p>The execute bit for a directory is used to control whether the directory contents is listable.</p>
+<pre class="highlight"><code>$ chmod ugo-x dir1
+$ ls -l
+drw-r--r--   3 angrave  staff   102 Nov 10 11:22 dir1</code></pre>
+
+
+<p>However when attempting to list the contents of the directory,</p>
+<pre class="highlight"><code>$ ls dir1
+ls: dir1: Permission denied</code></pre>
+
+
+<p>In other words, the directory itself is discoverable but its contents cannot be listed.</p>
+<h2>What is file globbing (and who does it)?</h2>
+<p>Before executing the program the shell expands parameters into matching filenames. For example, if the current directory has three filenames that start with my ( my1.txt mytext.txt myomy), then</p>
+<pre class="highlight"><code>$ echo my*</code></pre>
+
+
+<p>Expands to </p>
+<pre class="highlight"><code>$ echo my1.txt mytext.txt myomy</code></pre>
+
+
+<p>This is known as file globbing and is processed before the command is executed.<br />
+ie the command's parameters are identical to manually typing every matching filename.</p>
+<h2>Creating secure directories</h2>
+<p>Suppose you created your own directory in /tmp and then set the permissions so that only you can use the directory (see below). Is this secure? </p>
+<pre class="highlight"><code>$ mkdir /tmp/mystuff
+$ chmod 700 /tmp/mystuff</code></pre>
+
+
+<p>There is a window of opportunity between when the directory is created and when it's permissions are changed. This leads to several vulnerabilities that are based on a race condition (where an attacker modifies the directory in some way before the privileges are removed). Some examples include:</p>
+<p>Another user replaces <code>mystuff</code> with a hardlink to an existing file or directory owned by the second user, then they would be able to read and control the contents of the <code>mystuff</code> directory. Oh no - our secrets are no longer secret!</p>
+<p>However in this specific example the <code>/tmp</code> directory has the sticky bit set, so other users may not delete the <code>mystuff</code> directory, and the simple attack scenario described above is impossible. This does not mean that creating the directory and then later making the directory private is secure! A better version is to atomically create the directory with the correct permissions from its inception - </p>
+<pre class="highlight"><code>$ mkdir -m 700 /tmp/mystuff</code></pre>
+
+
+<h2>How do I automatically create parent directories?</h2>
+<pre class="highlight"><code>$ mkdir -p d1/d2/d3</code></pre>
+
+
+<p>Will automatically create d1 and d2 if they don't exist.</p>
+<h2>My default umask 022; what does this mean?</h2>
+<p>The umask <em>subtracts</em> (reduces) permission bits from 777 and is used when new files and new directories are created by open,mkdir etc. Thus <code>022</code> (octal) means that group and other privileges will not include the writable bit . Each process (including the shell) has a current umask value. When forking, the child inherits the parent's umask value.</p>
+<p>For example, by setting the umask to 077 in the shell, ensures that future file and directory creation will only be accessible to the current user,</p>
+<pre class="highlight"><code>$ umask 077
+$ mkdir secretdir</code></pre>
+
+
+<p>As a code example, suppose a new file is created with <code>open()</code> and mode bits <code>666</code> (write and read bits for user,group and other):</p>
+<pre class="highlight"><code class="language-C">open(&quot;myfile&quot;, O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);</code></pre>
+
+
+<p>If umask is octal 022, then the permissions of the created file will be 0666 &amp; ~022<br />
+ie.</p>
+<pre class="highlight"><code class="language-C">           S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH</code></pre>
+
+
+<h2>How can I copy bytes from one file to another?</h2>
+<p>Use  the versatile <code>dd</code> command. For example, the following command copies 1mb of data from the file <code>/dev/urandom</code> to the file <code>/dev/null</code>. The data is copied as 1024 blocks of blocksize 1024 bytes.</p>
+<pre class="highlight"><code>$ dd if=/dev/urandom of=/dev/null bs=1k count=1024</code></pre>
+
+
+<p>Both the input and output files in the example above are virtual - they don't exist on a disk. This means the speed of the transfer is unaffected by hardware power. Instead they are part of the <code>dev</code> filesystem, which is virtual filesystem provided by the kernel.<br />
+The virtual file <code>/dev/urandom</code> provides an infinite stream of random bytes, while the virtal file <code>/dev/null</code> ignores all bytes written to it. A common use of <code>/dev/null</code> is to discard the output of a command,</p>
+<pre class="highlight"><code>$ myverboseexecutable &amp;gt; /dev/null</code></pre>
+
+
+<p>Another commonly used /dev virtual file is <code>/dev/zero</code> which provides an infinite stream of zero bytes.<br />
+For example, we can benchmark the operating system performance of reading stream zero bytes in the kernel into a process memory and writing the bytes back to the kernel without any disk I/O. Note the throughput (~20GB/s) is strongly dependent on blocksize. For small block sizes the overhead of additional <code>read</code> and <code>write</code> system calls will  dominate.</p>
+<pre class="highlight"><code>$ dd if=/dev/zero of=/dev/null bs=1M count=1024
+1024+0 records in
+1024+0 records out
+1073741824 bytes (1.1 GB) copied, 0.0539153 s, 19.9 GB/s</code></pre>
+
+
+<h2>What happens when I touch a file?</h2>
+<p>The <code>touch</code> executable creates file if it does not exist and also updates the file's last modified time to be the current time. For example, we can make a new private file with the current time:</p>
+<pre class="highlight"><code>$ umask 077       # all future new files will maskout all r,w,x bits for group and other access
+$ touch file123   # create a file if it does not exist, and update its modified time
+$ stat file123
+  File: `file123'
+  Size: 0           Blocks: 0          IO Block: 65536  regular empty file
+Device: 21h/33d Inode: 226148      Links: 1
+Access: (0600/-rw-------)  Uid: (395606/ angrave)   Gid: (61019/     ews)
+Access: 2014-11-12 13:42:06.000000000 -0600
+Modify: 2014-11-12 13:42:06.001787000 -0600
+Change: 2014-11-12 13:42:06.001787000 -0600</code></pre>
+
+
+<p>An example use of touch is to force make to recompile a file that is unchanged after modifying the compiler options inside the makefile. Remeber that make is 'lazy' - it will compare the modified time of the source file with the corresponding output file to see if the file needs to be recompiled</p>
+<pre class="highlight"><code>$ touch myprogram.c   # force my source file to be recompiled
+$ make</code></pre>
+
+
+<p><a href="https://github.com/angrave/SystemProgramming/wiki/File-System,-Part-5:-Virtual-file-systems">Go to File System: Part 5</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

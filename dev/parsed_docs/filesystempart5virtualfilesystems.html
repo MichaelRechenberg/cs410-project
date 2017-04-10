@@ -1,0 +1,23 @@
+POSIX systems, such as Linux and Mac OSX (which is based on BSD) include several virtual filesystems that are mounted (available) as part of the file-system. Files inside these virtual filesystems do not exist on the disk; they are generated dynamically by the kernel when a process requests a directory listing.
+Linux provides 3 main virtual filesystems
+Use mount
+Using mount without any options generates a list (one filesystem per line) of mounted filesystems including networked, virtual and local (spinning disk / SSD-based) filesystems. Here is a typical output of mount
+Notice that each line includes the filesystem type source of the filesystem and mount point.
+To reduce this output we can pipe it into grep and only see lines that match a regular expression. 
+Examples of virtual files in /proc:
+/dev/random is a file which contains pseudorandom number generator where the entropy is determined from environmental noise. Random will block/wait until enough entropy is collected from the environment. 
+/dev/urandom is like random, but differs in the fact that it allows for repetition (lower entropy threshold), thus wont block.
+Suppose you had downloaded a bootable linux disk image...
+Before putting the filesystem on a CD, we can mount the file as a filesystem and explore its contents. Note, mount requires root access, so let's run it using sudo
+Before the mount command, the arch directory is new and obviously empty. After mounting, the contents of arch/ will be drawn from the files and directories stored in the filesystem stored inside the archlinux-2014.11.01-dual.iso file.
+The loop option is required because we want to mount a regular file not a block device such as a physical disk. 
+The loop option wraps the original file as a block device - in this example we will find out below that the file system is provided under /dev/loop0 : We can check the filesystem type and mount options by running the mount command without any parameters. We will pipe the output into grep so that we only see the relevant output line(s) that contain 'arch'
+The iso9660 filesystem is a read-only filesystem originally designed for optical storage media (i.e. CDRoms). Attempting to change the contents of the filesystem will fail
+Go to File System: Part 6
+Virtual file systems
+How do I find out what filesystems are currently available (mounted)?
+Todo
+Differences between random and urandom?
+How do I mount a disk image?
+File System, Part 5: Virtual file systems
+File System, Part 5: Virtual file systems

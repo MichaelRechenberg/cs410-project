@@ -1,0 +1,13 @@
+We've already seen open and fopen (todo link here) so let's look at some more advanced concepts.
+For files less than the size of a long using fseek and ftell is a simple way to accomplish this:
+Move to the end of the file and find out the current position.
+This tells us the current position in the file in bytes - i.e. the length of the file!
+fseek can also be used to set the absolute position.
+All future reads and writes in the parent or child processes will honor this position.
+Note writing or reading from the file will change the current position.
+See the man pages for fseek and ftell for more information.
+Unlike position, closing a file stream is unique to each process. Other processes can continue to use their own file-handle.
+How do I tell how large a file is?
+What happens if a child process closes a filestream using fclose or close?
+Files, Part 1: Working with files
+Files, Part 1: Working with files

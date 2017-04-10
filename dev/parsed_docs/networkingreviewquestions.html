@@ -1,0 +1,79 @@
+What is a socket?
+
+
+Describe one significant difference between IPv4 and IPv6
+When and why would you use ntohs?
+If a host address is 32 bits which IP scheme am I most likely using? 128 bits?
+Which common network protocol is packet based and may not successfully deliver the data?
+Which common protocol is stream-based and will resend data if packets are lost?
+What is the SYN ACK ACK-SYN handshake?
+@MCQ Which one of the following is NOT a feature of TCP? 
+Nice! https://en.wikipedia.org/wiki/OSI_model @EXP
+No hint available. @HINT
+- Packet re-ordering
+- Flow control
+- Packet re-tranmission
+- Simple error detection
+- Encryption @ANS
+@END
+What protocol uses sequence numbers? What is their initial value? And why?
+What are the minimum network calls are required to build a TCP server? What is their correct order?
+What are the minimum network calls are required to build a TCP client? What is their correct order?
+When would you call bind on a TCP client?
+What is the purpose of
+socket
+bind
+listen
+accept
+?
+Which of the above calls can block, waiting for a new client to connect?
+What is DNS? What does it do for you? Which of the CS241 network calls will use it for you?
+For getaddrinfo, how do you specify a server socket?
+Why may getaddrinfo generate network packets?
+Which network call specifies the size of the allowed backlog?
+Which network call returns a new file descriptor?
+When are passive sockets used?
+When is epoll a better choice than select? When is select a better choice than epoll?
+Will  write(fd, data, 5000)  always send 5000 bytes of data? When can it fail?
+How does Network Address Translation (NAT) work? 
+
+
+What are some of the differences between HTTP 1.0 and HTTP 1.1? How many ms will it take to transmit 3 files from server to client if the network has a 20ms transmit time? How does the time taken differ between HTTP 1.0 and HTTP 1.1?
+Writing to a network socket may not send all of the bytes and may be interrupted due to a signal. Check the return value of write to implement write_all that will repeatedly call write with any remaining data. If write returns -1 then immediately return -1 unless the errno is EINTR - in which case repeat the last write attempt. You will need to use pointer arithmetic.
+Implement a multithreaded TCP server that listens on port 2000. Each thread should read 128 bytes from the client file descriptor and echo it back to the client, before closing the connection and ending the thread.
+Implement a UDP server that listens on port 2000. Reserve a buffer of 200 bytes. Listen for an arriving packet. Valid packets are 200 bytes or less and start with four bytes 0x65 0x66 0x67 0x68. Ignore invalid packets. For valid packets add the value of the fifth byte as an unsigned value to a running total and print the total so far. If the running total is greater than 255 then exit.
+Short answer questions
+Coding questions
+Q1
+Q2
+Q3
+Q4
+Q5
+Q6
+Q7
+Q8
+Q9
+Q10
+Q11
+Q12
+Q13
+Q14
+Q15
+Q16
+Q17
+Q18
+Q19
+Q20
+Q21
+Q22
+Q23
+Q24
+Q25
+Q26
+Q 2.1
+Q 2.2
+Q 2.3
+Networking: Review Questions
+What is special about listening on port 1000 vs port 2000?
+Assuming a network has a 20ms Transmit Time between Client and Server, how much time would it take to establish a TCP Connection?
+Networking: Review Questions

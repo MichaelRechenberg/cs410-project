@@ -1,0 +1,7 @@
+#This file must exist in parsed_docs directory name as 'file.toml'
+type = "file-corpus"
+#Note: this is a relative path from wherever you run generate_index() on 
+# a PSS object (whereever you run example.py)
+list = "parsed_docs"
+encoding = "utf-8" # optional; this is the default
+metadata = [{name = "doc_path", type = "string"}]    

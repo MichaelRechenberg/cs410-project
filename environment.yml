@@ -6,6 +6,7 @@ dependencies:
 - anaconda::beautifulsoup4=4.5.3=py35_0
 - anaconda::requests=2.13.0=py35_0
 - bleach=1.5.0=py35_0
+- conda-forge::chardet=2.3.0=py35_0
 - cycler=0.10.0=py35_0
 - dbus=1.10.10=0
 - decorator=4.0.11=py35_0
@@ -89,6 +90,7 @@ dependencies:
   - jupyter-console==5.1.0
   - jupyter-core==4.3.0
   - metapy==0.1.2
+  - piazza-api==0.5.2
   - prompt-toolkit==1.0.9
 prefix: /home/mrechenberg/miniconda/envs/cs410-project
 

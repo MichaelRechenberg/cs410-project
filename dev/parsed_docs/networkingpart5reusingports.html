@@ -1,0 +1,19 @@
+By default, after a socket is closed the port enters a time-out state during which time it cannot be re-used ('bound to a new socket').
+This behavior can be disabled by setting the socket option REUSEPORT before bind-ing to a port:
+Yes! In fact outgoing TCP connections are automatically bound to an unused port on the client. Usually it's unnecessary to explicitly set the port on the client because the system will intelligently find an unusued port on a reasonable interface (e.g. the wireless card, if currently connected by WiFi connection). However it can be useful if you needed to specifically choose a particular ethernet card, or if a firewall only allows outgoing connections from a particular range of port values.
+To explicitly bind to an ethernet interface and port, call bind before connect
+The accept system call can optionally provide information about the remote client, by passing in a sockaddr struct. Different protocols have differently variants of the  struct sockaddr, which are different sizes. The simplest struct to use is the sockaddr_storage which is sufficiently large to represent all possible types of sockaddr. Notice that C does not have any model of inheritance. Therefore we need to explicitly cast our struct to the 'base type' struct sockaddr.
+We've already seen getaddrinfo that can build a linked list of addrinfo entries (and each one of these can include socket configuration data). What if we wanted to turn socket data into IP and port addresses? Enter getnameinfo that can be used to convert a local or remote socket information into a domain name or numeric IP. Similarly the port number can be represented as a service name (e.g. "http" for port 80). In the example below we request numeric versions for the client IP address and client port number.
+Todo: Discuss NI_MAXHOST and NI_MAXSERV, and NI_NUMERICHOST 
+To obtain a linked list of IP addresses of the current machine use getifaddrs which will return a linked list of IPv4 and IPv6 IP addresses (and potentially other interfaces too). We can examine each entry and use getnameinfo to print the host's IP address.
+The  ifaddrs struct includes the family but does not include the sizeof the struct. Therefore we need to manually determine the struct sized based on the family (IPv4 v IPv6)
+The complete code is shown below.
+Answer: use ifconfig (or Windows's ipconfig)
+However this command generates a lot of output for each interface, so we can filter the output using grep
+When I re-run my server code it doesn't work! Why?
+Can a TCP client bind to a particular port?
+Who connected to my server?
+getnameinfo Example: What's my IP address?
+What's my machine's IP address (shell version)
+Networking, Part 5: Reusing ports
+Networking, Part 5: Reusing ports

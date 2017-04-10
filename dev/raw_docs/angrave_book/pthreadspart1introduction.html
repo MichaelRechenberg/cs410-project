@@ -1,0 +1,133 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pthreads, Part 1: Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Pthreads, Part 1: Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Pthreads, Part 1: Introduction
+            </div>
+            <h3>Pthreads, Part 1: Introduction</h3>
+
+<h2>What is a thread?</h2>
+<p>A thread is short for 'thread-of-execution'. It represents the sequence of instructions that the CPU has (and will) execute. To remember how to return from function calls, and to store the values of automatic variables and  parameters a thread uses a stack.</p>
+<h2>How does the thread's stack work?</h2>
+<p>Your main function (and other functions you might call) have automatic variables. We will store them in memory using a stack and keep track of how large the stack is by using a simple pointer (the "stack pointer"). If the thread calls another function, we move our stack pointer down, so that we have more space for parameters and automatic variables. Once it returns from a function, we can move the stack pointer back up to its previous value. We keep a copy of the old stack pointer value - on the stack! This is why returning from a function is very quick - it's easy to 'free' the memory used by automatic variables - we just need to change the stack pointer.</p>
+<p><img alt="" src="http://i.imgur.com/RPblpE1.png" /></p>
+<h2>How many threads can my process have?</h2>
+<p>You can have more than one thread running inside a process. You get the first thread for free! It runs the code you write inside 'main'. If you need more threads you can call <code>pthread_create</code> to create a new thread using the pthread library. You'll need to pass a pointer to a function so that the thread knows where to start.</p>
+<p>The threads you create all live inside the same virtual memory because they are part of the same process. Thus they can all see the heap, the global variables and the program code etc. Thus you can have two (or more) CPUs working on your program at the same time and inside the same process. It's up to the operating system to assign the threads to CPUs. If you have more active threads than CPUs then the kernel will assign the thread to a CPU for a short duration (or until it runs out of things to do) and then will automatically switch the CPU to work on another thread. <br />
+For example, one CPU might be processing the game AI while another thread is computing the graphics output.</p>
+<h2>Hello world pthread example</h2>
+<p>To use pthreads you will need to include <code>pthread.h</code> AND you need to compile with <code>-pthread</code> (or <code>-lpthread</code>) compiler option. This option tells the compiler that your program requires threading support</p>
+<p>To create a thread use the function <code>pthread_create</code>. This function takes four arguments:</p>
+<pre class="highlight"><code class="language-C">int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
+                   void *(*start_routine) (void *), void *arg);</code></pre>
+
+
+<ul>
+<li>The first is a pointer to a variable that will hold the id of the newly created thread.</li>
+<li>The second is a pointer to attributes that we can use to tweak and tune some of the advanced features of pthreads.</li>
+<li>The third is a pointer to a function that we want to run</li>
+<li>Fourth is a pointer that will be given to our function</li>
+</ul>
+<p>The argument <code>void *(*start_routine) (void *)</code> is difficult to read! It means a pointer that takes a <code>void *</code> pointer and returns a <code>void *</code> pointer. It looks like a function declaration except that the name of the function is wrapped with <code>(* .... )</code></p>
+<p>Here's the simplest example:</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;pthread.h&amp;gt;
+// remember to set compilation option -pthread
+
+void *busy(void *ptr) {
+// ptr will point to &quot;Hi&quot;
+    puts(&quot;Hello World&quot;);
+    return NULL;
+}
+int main() {
+    pthread_t id;
+    pthread_create(&amp;amp;id, NULL, busy, &quot;Hi&quot;);
+    while (1) {} // Loop forever
+}</code></pre>
+
+
+<p>If we want to wait for our thread to finish use <code>pthread_join</code></p>
+<pre class="highlight"><code class="language-C">void *result;
+pthread_join(id, &amp;amp;result);</code></pre>
+
+
+<p>In the above example, <code>result</code> will be <code>null</code> because the busy function returned <code>null</code>.<br />
+We need to pass the address-of result because <code>pthread_join</code> will be writing into the contents of our pointer.</p>
+<p>See <a href="https://github.com/angrave/SystemProgramming/wiki/Pthreads%2C-Part-2%3A-Usage-in-Practice">Pthreads Part 2</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

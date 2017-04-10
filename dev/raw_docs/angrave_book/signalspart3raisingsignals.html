@@ -1,0 +1,134 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signals, Part 3: Raising signals</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Signals, Part 3: Raising signals</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Signals, Part 3: Raising signals
+            </div>
+            <h3>Signals, Part 3: Raising signals</h3>
+
+<h2>How do I send a signal to a process from the shell?</h2>
+<p>You already know one way to send a <code>SIG_INT</code> just type <code>CTRL-C</code> <br />
+From the shell you can use <code>kill</code> (if you know the process id) and <code>killall</code> (if you know the process name)</p>
+<pre class="highlight"><code># First let's use ps and grep to find the process we want to send a signal to
+$ ps au | grep myprogram
+angrave  4409   0.0  0.0  2434892    512 s004  R+    2:42PM   0:00.00 myprogram 1 2 3
+
+#Send SIGINT signal to process 4409 (equivalent of `CTRL-C`)
+$ kill -SIGINT 4409
+
+#Send SIGKILL (terminate the process)
+$ kill -SIGKILL 4409
+$ kill -9 4409</code></pre>
+
+
+<p><code>killall</code> is similar except that it matches by program name. The next two example, sends a <code>SIGINT</code> and then <code>SIGKILL</code> to terminate the processes that are running <code>myprogram</code></p>
+<pre class="highlight"><code># Send SIGINT (SIGINT can be ignored)
+$ killall -SIGINT myprogram
+
+# SIGKILL (-9) cannot be ignored! 
+$ killall -9 myprogram</code></pre>
+
+
+<h2>How do I send a signal to a process from the running C program?</h2>
+<p>Use <code>raise</code> or <code>kill</code></p>
+<pre class="highlight"><code class="language-C">int raise(int sig); // Send a signal to myself!
+int kill(pid_t pid, int sig); // Send a signal to another process</code></pre>
+
+
+<p>For non-root processes, signals can only be sent to processes of the same user i.e. you cant just SIGKILL my processes! See kill(2) i.e. man -s2 for more details.</p>
+<h2>How do I send a signal to a specific thread?</h2>
+<p>Use <code>pthread_kill</code></p>
+<pre class="highlight"><code class="language-C">int pthread_kill(pthread_t thread, int sig)</code></pre>
+
+
+<p>In the example below, the newly created thread executing <code>func</code> will be interrupted by <code>SIGINT</code></p>
+<pre class="highlight"><code class="language-C">pthread_create(&amp;amp;tid, NULL, func, args);
+pthread_kill(tid, SIGINT);
+pthread_kill(pthread_self(), SIGKILL); // send SIGKILL to myself</code></pre>
+
+
+<h2>Will <code>pthread_kill( threadid, SIGKILL)</code> kill the process or thread?</h2>
+<p>It will kill the entire process. Though individual threads can set a signal mask, the signal disposition (the table of handlers/action performed for each signal) is <em>per-proces</em>s not <em>per-thread</em>. This means <br />
+<code>sigaction</code> can be called from any thread because you will be setting a signal handler for all threads in the process.</p>
+<h2>How do I catch (handle) a signal ?</h2>
+<p>You can choose a handle pending signals asynchronously or synchronously.</p>
+<p>Install a signal handler to asynchronously handle signals use <code>sigaction</code> (or, for simple examples, <code>signal</code> ).</p>
+<p>To synchronously catch a pending signal use <code>sigwait</code> (which blocks until a signal is delivered) or <code>signalfd</code> (which also blocks and provides a file descriptor that can be <code>read()</code> to retrieve pending signals).</p>
+<p>See <code>Signals, Part 4</code> for an example of using <code>sigwait</code></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>
