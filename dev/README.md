@@ -1,7 +1,5 @@
 This directory is a testing environment for testing out PSS.py
 
-Note: the jupyter notebooks are deprecated
-
 Make sure you have the following directories
   parsed_docs/
   raw_docs/
@@ -20,4 +18,7 @@ Make sure you have the following files in the right directories:
 Note: run example.py within the same directory you have the above
   files and directories within.  a directory idx/ will also be 
   created in the directory you run example.py
+
+Note: you if you accidentally delete parsed_docs/file.toml, simply
+  copy backup_file.toml into parsed_docs/ and rename it to file.toml
 

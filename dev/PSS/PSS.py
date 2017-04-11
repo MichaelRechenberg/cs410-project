@@ -6,47 +6,59 @@ import metapy
 
 
 class PSS_Runner:
+
+    #String containing the name of the directory that contains the raw, unmodified
+    #  documents that the instructor wishes to provide students
+    #Instructors should create single-level directories within the raw_docs directory
+    #  and then designate the weights and parser functions they want applied to documents
+    #  in each directory.  In comments you may see these single-level directories 
+    #  referred to as 'collections'
+    #The documents within raw_docs_dir will be served to students via Flask if they
+    #  wish to see that documents
     raw_docs_dir = "raw_docs"
+    #String containing the name of the directory where PSS_Runner will store the parsed
+    #  version of every file within the raw_docs directory 
     parsed_docs_dir = "parsed_docs"
     
-    def __init__(self, root_dir, config_file, collections=None, weights={}, parser_mappings={}):
-    
+    def __init__(self, root_dir, config_file, weights=None, parser_mappings=None):
+
+        #String containing the absolute path to the 'root directory' of PSS, 
+        #  the directory where the raw_docs, parsed_docs, and config.toml file reside    
         self.root_dir = root_dir
         
-        #List of all directories within raw_docs_dir
-        if(collections is None):
-            self.collections = os.listdir(os.path.join(self.root_dir, PSS_Runner.raw_docs_dir))
-        else:
-            self.collections = collections
+        #List of all directories within the raw_docs directory
+        #Instructors should put the files they want to provide within a single-level 
+        #  directory within the raw_docs directory
+        #Directory names and file names must be unique
+        self.collections = os.listdir(os.path.join(self.root_dir, PSS_Runner.raw_docs_dir))
         
         #Dictionary with (collection_name, weight) key-value pairs
+        #Used for determining per-collection weights to multiply a document's total score by
         self.weights = weights
         
         #Dictionary with (collection_name, parser_function) mappings
         #Used so each collection can have a specified parser for all files in that parser
-        self.parser_mappings = {}
+        self.parser_mappings = parser_mappings 
         
-        #String containing asbolute path to the config.toml file
-        self.config_file = config_file
-        
-        #TODO: allow user to modify their ranker
+        #String containing absolute path to the config.toml file 
+        #  but you only have to pass in the config_file's path relative to root_dir
+        #  when you pass it into PSS_Runner's constructor
+        self.config_file = os.path.join(self.root_dir, config_file)
+       
+        #The core ranker used for ranking documents
+        #This ranker will compute a score for each document and then PSS_Runner
+        #  will take that score and multiply it by the collection-specific weight
+        #  as defined by the 'weights' field
         self.ranker = metapy.index.OkapiBM25(k1=1.2, b = 0.75, k3=500)
         
-        #This will be generated with parse_raw_docs()
+        #This will be a metapy inverted index, generated with parse_raw_docs()
         self.idx = None 
+
+        #The PSS ranker, the ranker that uses the 'real' ranker and then applies
+        #   the collection-specific weights dictated by self.weights
+        self.pss_ranker = PSS_Runner.PSS_Runner_Ranker(self)
+
         
-    def set_parser_mappings(self, mappings):
-        """
-            Set the parser mappings 
-        """
-        self.parser_mappings = mappings
-    
-    def set_weights(self, weights):
-        """
-            Sets the weights for each collection
-        """
-        self.weights = weights
-    
         
     def get_raw_docs_dir(self):
         """
@@ -62,6 +74,8 @@ class PSS_Runner:
 
     def _make_one_line(self, parsed_file):
         """
+            Utility function to make a text file into one long line 
+
             Makes a file into one line, separated by spaces
             Note this destroys the original parsed file
             
@@ -80,46 +94,60 @@ class PSS_Runner:
     
     def parse_raw_docs(self):
         """
-            Parse all of the raw docs, put them in the parsed_docs_dir, 
-                and fill out the metadata.dat file with the file paths as well as
-                the parsed_docs-full-corpus.txt with 
-                    [none] relative_filename
-                blocks
+            Parse all of the files within every directory in the raw_docs directory, 
+                put them in the parsed_docs_dir, and fill out meta information that MeTA
+                needs:  
+
+                  metadata.dat - write the file path of each file relative 
+                                  to the raw_docs dir
+
+                  parsed_docs-full-corpus.txt - write the following line
+
+                      [none] filepath_relative_to_raw_docs
+                    
+                      so MeTA can process the parsed documents as a file-corpus
+                     
         """
         print("Beginning Parsing")
 
         #parsed_docs-full-corpus.txt
-        #order in this file determines what docID's are
+        #order of files within this file determines what docID's are
         full_corpus_filename = os.path.join(self.get_parsed_docs_dir(), "{0}-full-corpus.txt".format(PSS_Runner.parsed_docs_dir))
         
         #metadata.dat file
         metadata_filename = os.path.join(self.get_parsed_docs_dir(), "metadata.dat")
-        
-        with open(full_corpus_filename, "w+") as full_corpus_file:
-            with open(metadata_filename, "w+") as metadata_file:
+       
+        try: 
+          with open(full_corpus_filename, "w+") as full_corpus_file:
+              with open(metadata_filename, "w+") as metadata_file:
 
-                for collection in self.collections:
-                    files = [f for f in os.listdir(os.path.join(self.get_raw_docs_dir(), collection))]
-                    # Select the parser fucntion for this collection
-                    parser_func = self.parser_mappings[collection]
-                    for raw_file in files:
-                        abs_raw_filename = os.path.join(os.path.join(self.get_raw_docs_dir(), collection), 
-                                                        raw_file)
-                        #user defined parser function that will write whatever
-                        #  text representation they want into the PSS_Runner.parsed_docs_dir
-                        #note that the name of the file written to PSS_Runner.parse_docs_dir
-                        #  must be the same as the file that lives in PSS_Runner.raw_docs_dir
-                        #  (for .pdf you should still write the_file.pdf as the file name
-                        #   within PSS_Runner.raw_docs_dir even though the parsed file isn't 
-                        #   actually a .pdf file...metapy treats it all like a text document)
-                        parser_func(abs_raw_filename, self.get_parsed_docs_dir())
-                        #write entry in metadata file
-                        relative_to_public_doc_path = os.path.join(collection, raw_file)
-                        metadata_file.write("{0}\n".format(relative_to_public_doc_path))
-                        full_corpus_file.write("[none] {0}\n".format(raw_file))
-                        #self._make_one_line(os.path.join(self.get_parsed_docs_dir(), raw_file))
+                  #Parse every file within the raw_docs directory
+                  for collection in self.collections:
+                      #Assumes all collections contain only files, no subdirectories
+                      files = os.listdir(os.path.join(self.get_raw_docs_dir(), collection))
+                      # Select the parser function we want to use on documents in this collection
+                      parser_func = self.parser_mappings[collection]
+                      for raw_file in files:
+                          abs_raw_filename = os.path.join(os.path.join(self.get_raw_docs_dir(), collection), 
+                                                          raw_file)
+                          #user defined parser function that will write whatever
+                          #  text representation they want into the PSS_Runner.parsed_docs_dir
+                          #note that the name of the file written to PSS_Runner.parse_docs_dir
+                          #  must be the same as the file that lives in PSS_Runner.raw_docs_dir
+                          #  (for .pdf you should still write the_file.pdf as the file name
+                          #   within PSS_Runner.raw_docs_dir even though the parsed file isn't 
+                          #   actually a .pdf file...metapy treats it all like a text document)
+                          parser_func(abs_raw_filename, self.get_parsed_docs_dir())
+                          #write entry in metadata file
+                          relative_to_raw_docs_path = os.path.join(collection, raw_file)
+                          metadata_file.write("{0}\n".format(relative_to_raw_docs_path))
+                          #write entry into parsed_docs-full-corpus.txt
+                          full_corpus_file.write("[none] {0}\n".format(raw_file))
 
-        print("Finished Parsing")
+        except IOError as err:
+          print("I/O Error in parse_raw_docs() {0}: {1}".format(err.errno, err.strerror))
+        else:
+          print("Finished Parsing Successfully")
         
         
         
@@ -141,48 +169,69 @@ class PSS_Runner:
                 Note: you may have less than num_returned results returned
                 
             Returns:
-                A list of document paths (relative to their location in the raw_docs directory)
-                    of the top num_returned documents
+                A list of tuples containing the following information:
+                  (doc_id, score, filepath_relative_to_raw_docs_directory)
+
+                Returns None if the parser_mappings or weights of the PSS_Runner have not
+                    been set before calling this function
         """
+        if(self.parser_mappings is None):
+          print("You must set the paser_mappings of the PSS_Runner before querying")
+          return None
+        elif(self.weights is None):
+          print("You must set the  weights of the PSS_Runner before querying")
+          return None
         query = metapy.index.Document()
         query.content(user_query)
-        # Init our PSS_Runner_Ranker so we can apply the collection weights
-        pss_ranker = PSS_Runner_Ranker(self)
-        results = pss_ranker.score(self.idx, query, num_returned)
-        top_doc_paths = []
-        for result in results:
-            top_doc_paths.append(self.idx.metadata(result[0]).get("doc_path"))
-        return top_doc_paths
+
+        #List containing the results of the query
+        result_tuples = []
+
+        #ranked_list contains tuples of (doc_id, score)
+        ranked_list = self.pss_ranker.score(self.idx, query, num_returned)
+        for ranked_list_result in ranked_list:
+            doc_id = ranked_list_result[0]
+            doc_path = self.idx.metadata(doc_id).get("doc_path")
+            result_tuples.append( (doc_id, ranked_list_result[1], doc_path) )
+
+        return result_tuples
     
 
     
             
 
-class PSS_Runner_Ranker(metapy.index.RankingFunction):
-    """
-        Custom RankingFunction that applies a typical ranking 
-            function (BM25, Dirichlet Prior) to score a document
-            and then multiplies that score by the collection
-            weight of the document
-    """
-    def __init__(self, pss_object):
+    class PSS_Runner_Ranker(metapy.index.RankingFunction):
         """
-            pss_object - the PSS_Runner object with its index and weights initialized
+            Custom RankingFunction that applies the 'real' ranking 
+                function (BM25, Dirichlet Prior) of a PSS_Runner to score a document
+                and then multiplies that score by the collection-specific
+                weight 
+    
         """
-        self.pss_object = pss_object
-        super(PSS_Runner_Ranker, self).__init__()
+        def __init__(self, pss_runner):
+            """
+                pss_runner - the PSS_Runner object that contains this PSS_Runner_Ranker
+            """
+            self.pss_runner = pss_runner
+            super(PSS_Runner.PSS_Runner_Ranker, self).__init__()
+    
+        def score_one(self, sd):
+            #Score the document based off of the 'real' ranker
+            #  that the containing PSS_Runner is using
+            raw_score = self.pss_runner.ranker.score_one(sd)
+            doc_id = sd.d_id
+            #fetch this documents filepath, relative to the raw_docs directory
+            doc_path = self.pss_runner.idx.metadata(doc_id).get("doc_path")
+            collection_name = os.path.dirname(doc_path)
+            #apply the collection-specific weight
+            weight = self.pss_runner.weights[collection_name]
+            return raw_score * weight
 
-    def score_one(self, sd):
-        # Score given by a 'real' ranker
-        # TODO: have this ranker passed in from PSS_Runner class
-        ranker = metapy.index.OkapiBM25()
-        raw_score = ranker.score_one(sd)
-        doc_id = sd.d_id
-        doc_path = self.pss_object.idx.metadata(doc_id).get("doc_path")
-        collection_name = os.path.dirname(doc_path)
-        weight = self.pss_object.weights[collection_name]
-        return raw_score * weight
 
+
+#TODO: decide if we want to enforce that the file extension within the 
+#         parsed_docs is the same as the name within raw_docs
+#         or if we even need to store the filename (just call it by it's doc_id)
    
 # example dumb parsers we can use
 # all parsers take the form parser(filename, parsed_docs_directory)
@@ -234,7 +283,7 @@ def copy_parser_function(filename, parsed_docs_directory):
         Simple parser function that simply copies the file to the parsed_docs directory,
             unmodified
         If you want to not modify the raw file at all, use this function
-        Using line by line and not shutil.copyfile() because we don't want to lose metadata
+        Copying line by line and not shutil.copyfile() because we don't want to lose metadata
     """
     with open(filename, "r") as raw_file:
         parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
@@ -245,7 +294,7 @@ def copy_parser_function(filename, parsed_docs_directory):
 def html_parser_function(filename, parsed_docs_directory):
     """
         HTML parser function that extracts the text from certain tags
-            (using Beautiful Soup) and writes the text fro each tag on
+            (using Beautiful Soup) and writes the text from each tag on
             it's own line
     """
     tags = ['p', 'h1', 'h2', 'h3', 'title']
@@ -257,6 +306,7 @@ def html_parser_function(filename, parsed_docs_directory):
                 found_tags = soup.find_all(tag)
                 for found_tag in found_tags:
                     parsed_file.write("{0}\n".format(found_tag.text))
+
                     
 def pdf_parser_function(filename, parsed_docs_directory):
         

@@ -1,4 +1,4 @@
-#This file must exist in parsed_docs directory name as 'file.toml'
+#This file must exist in parsed_docs directory name under the name 'file.toml'
 type = "file-corpus"
 #Note: this is a relative path from wherever you run generate_index() on 
 # a PSS object (whereever you run example.py)

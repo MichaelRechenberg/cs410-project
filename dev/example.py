@@ -8,7 +8,7 @@ import metapy
 
 # We create a PSS_Runner object
 root_dir = os.getcwd()
-a = PSS.PSS_Runner(root_dir, os.path.join(root_dir, "config.toml"))
+a = PSS.PSS_Runner(root_dir,  "config.toml")
 
 
 # We set the parser mappings for each collection so every file within
@@ -35,7 +35,7 @@ parser_mappings = {
   'angrave_book': PSS.html_parser_function,
   'pdfs':         PSS.pdf_parser_function
 }
-a.set_parser_mappings(parser_mappings)
+a.parser_mappings = parser_mappings
 
 # We set weights for each collection
 # These weights will be multiplied to the score given by a
@@ -48,7 +48,7 @@ weights = {
   'pdfs'        : 1,
   'mp_docs'     : 0,
 }
-a.set_weights(weights)
+a.weights = weights
 a.parse_raw_docs()
 a.generate_index()
 
@@ -61,12 +61,13 @@ a.weights['mp_docs'] = 3
 # Let's ask some queries
 while(True):
   print("Enter a query")
-  print("Type ! to exit")
+  print("Type ! to exit\n")
   query = input()
   if(query == '!'):
     break
   results = a.score_query(query, 10)
-  print("Printing results for query:")
+  print("Printing results for query:\n")
   for result in results:
     print(result)
+  print()
 
