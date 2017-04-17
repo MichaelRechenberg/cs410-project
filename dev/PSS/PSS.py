@@ -94,18 +94,31 @@ class PSS_Runner:
     
     def parse_raw_docs(self):
         """
-            Parse all of the files within every directory in the raw_docs directory, 
-                put them in the parsed_docs_dir, and fill out meta information that MeTA
-                needs:  
+            Parse all of the files within every collection in the raw_docs directory according
+                to that collection's specified parser function, then store the parsed versions
+                within the parsed_docs directory. Note each file within the parsed_docs directory
+                is named by it's doc_id...if you need to recover the raw file you can access the
+                raw file's relative path to the raw_docs directory by looking at the metadata of
+                the PSS_Runner's inverted index.
 
-                  metadata.dat - write the file path of each file relative 
-                                  to the raw_docs dir
+                  e.g.
 
-                  parsed_docs-full-corpus.txt - write the following line
+                    doc_path = self.idx.metadata(doc_id).get("doc_path")
 
-                      [none] filepath_relative_to_raw_docs
+
+             This function also creates and writes to 2 files that MeTA needs to operate
+
+                  metadata.dat - the metadata file that the inverted index uses. For every file
+                    within a collection, this function will write that file's relative path
+                    to the raw_docs directory so you can retrieve the raw file given a doc_id
+
+                  parsed_docs-full-corpus.txt - MeTA uses this to construct a file-corpus
+                    This function writes the following line per document:
+
+                      [none] doc_id
+
+                    We write doc_id because each file is being named by its doc_id within parsed_docs 
                     
-                      so MeTA can process the parsed documents as a file-corpus
                      
         """
         print("Beginning Parsing")
@@ -118,6 +131,10 @@ class PSS_Runner:
         metadata_filename = os.path.join(self.get_parsed_docs_dir(), "metadata.dat")
        
         try: 
+          # Document ID as used in MeTA and used here for naming files in the parsed_docs directory
+          # We can recover the 'raw' file from using the doc_path metadata found within the index we'll
+          #   generate later
+          doc_id = 0
           with open(full_corpus_filename, "w+") as full_corpus_file:
               with open(metadata_filename, "w+") as metadata_file:
 
@@ -137,15 +154,20 @@ class PSS_Runner:
                           #  (for .pdf you should still write the_file.pdf as the file name
                           #   within PSS_Runner.raw_docs_dir even though the parsed file isn't 
                           #   actually a .pdf file...metapy treats it all like a text document)
-                          parser_func(abs_raw_filename, self.get_parsed_docs_dir())
-                          #write entry in metadata file
+                          
+                          abs_parsed_filename = os.path.join(self.get_parsed_docs_dir(), str(doc_id))
+                          parser_func(abs_raw_filename, abs_parsed_filename)
+                          #write doc_path in the metadata.dat file 
                           relative_to_raw_docs_path = os.path.join(collection, raw_file)
                           metadata_file.write("{0}\n".format(relative_to_raw_docs_path))
-                          #write entry into parsed_docs-full-corpus.txt
-                          full_corpus_file.write("[none] {0}\n".format(raw_file))
+                          #write doc_id entry into parsed_docs-full-corpus.txt
+                          full_corpus_file.write("[none] {0}\n".format(str(doc_id)))
+                          doc_id += 1
 
         except IOError as err:
           print("I/O Error in parse_raw_docs() {0}: {1}".format(err.errno, err.strerror))
+          print("You should remove all files from parsed_docs/, replace file.toml within parsed_docs")
+          print("and remove the idx/ directory created by MeTA before running again")
         else:
           print("Finished Parsing Successfully")
         
@@ -229,27 +251,28 @@ class PSS_Runner:
 
 
 
-#TODO: decide if we want to enforce that the file extension within the 
-#         parsed_docs is the same as the name within raw_docs
-#         or if we even need to store the filename (just call it by it's doc_id)
-   
-# example dumb parsers we can use
-# all parsers take the form parser(filename, parsed_docs_directory)
-#   filename - absolute filename of a file within the raw_docs directory
-#      Note: you can extract the base filename with os.path.basename(filename)
-#   parsed_docs_directory - absolute path of directory used to store the parsed docs
-def stupid_parse_file(filename, parsed_docs_directory):
+
+# example parsers
+# all parsers take the same form 
+#
+#  def some_parser_function(raw_filename, parsed_filename):
+#
+#            raw_filename -- the absolute path to the file within raw_docs we want to parse
+#            parsed_filename -- asbolute path of where within the parsed_docs directory we will
+#                store the parsed version of the file
+#   
+def stupid_parse_file(raw_filename, parsed_filename):
     """
         Params:
-            filename -- the absolute path to the file within raw_docs we want to parse
-            parsed_docs_directory -- asbolute path of the directory where we will store the parsed docs
+            raw_filename -- the absolute path to the file within raw_docs we want to parse
+            parsed_filename -- asbolute path of where within the parsed_docs directory we will
+                store the parsed version of the file
 
         Dummy parser which just adds RITA RITA RITA as the last line
             and writes the parsed file to parsed_docs_directory
     """
 
-    with open(filename, "r") as raw_file:
-        parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
+    with open(raw_filename, "r") as raw_file:
         with open(parsed_filename, "w+") as parsed_file:
             parsed_file.write('RITA RITA RITA\n')
             for line in raw_file:
@@ -257,18 +280,17 @@ def stupid_parse_file(filename, parsed_docs_directory):
             parsed_file.write('RITA RITA RITA\n')
         
     
-def stupid_parse_file2(filename, parsed_docs_directory):
+def stupid_parse_file2(raw_filename, parsed_filename):
     """
         Params:
-            filename -- the absolute path to the file within raw_docs we want to parse
-            parsed_docs_directory -- asbolute path of the directory where we will store the parsed docs
+            raw_filename -- the absolute path to the file within raw_docs we want to parse
+            parsed_filename -- asbolute path of where we will store the parsed file within
+                the parsed_docs directory
 
-        Dummy parser which just adds MP MP MP as the last line
-            and writes the parsed file to parsed_docs_directory
+        Dummy parser which just adds MP MP MP to the first and last line
     """
 
-    with open(filename, "r") as raw_file:
-        parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
+    with open(raw_filename, "r") as raw_file:
         with open(parsed_filename, "w+") as parsed_file:
             parsed_file.write('MP MP MP MP\n')
             for line in raw_file:
@@ -278,29 +300,27 @@ def stupid_parse_file2(filename, parsed_docs_directory):
             
 #Some not so dumb example parsers
 
-def copy_parser_function(filename, parsed_docs_directory):
+def copy_parser_function(raw_filename, parsed_filename):
     """
         Simple parser function that simply copies the file to the parsed_docs directory,
             unmodified
         If you want to not modify the raw file at all, use this function
         Copying line by line and not shutil.copyfile() because we don't want to lose metadata
     """
-    with open(filename, "r") as raw_file:
-        parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
+    with open(raw_filename, "r") as raw_file:
         with open(parsed_filename, "w+") as parsed_file:
             for line in raw_file:
                 parsed_file.write(line)
 
-def html_parser_function(filename, parsed_docs_directory):
+def html_parser_function(raw_filename, parsed_filename):
     """
         HTML parser function that extracts the text from certain tags
             (using Beautiful Soup) and writes the text from each tag on
             it's own line
     """
     tags = ['p', 'h1', 'h2', 'h3', 'title']
-    with open(filename, "r") as htmlfile:
+    with open(raw_filename, "r") as htmlfile:
         soup = BeautifulSoup(htmlfile, "html5lib")
-        parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
         with open(parsed_filename, "w+") as parsed_file:
             for tag in tags:
                 found_tags = soup.find_all(tag)
@@ -308,7 +328,7 @@ def html_parser_function(filename, parsed_docs_directory):
                     parsed_file.write("{0}\n".format(found_tag.text))
 
                     
-def pdf_parser_function(filename, parsed_docs_directory):
+def pdf_parser_function(raw_filename, parsed_filename):
         
     #If the user isn't on a linux machine or pdftotext isn't installed they'll have to to generate
     #  the text representation via some external mechanism and store
@@ -317,13 +337,12 @@ def pdf_parser_function(filename, parsed_docs_directory):
     #  out correctly if the user adds their processed PDF into the parsed_docs
     #  directory without modifying the file's name
     
-    parsed_filename = os.path.join(parsed_docs_directory, os.path.basename(filename))
     print("Note: PSS_Runner's PDF Parser requires the pdftotext program for Linux")
     # Use pdftotext command, so this only works on linux
-    os.system("pdftotext {0} {1}".format(filename, parsed_filename))
+    os.system("pdftotext {0} {1}".format(raw_filename, parsed_filename))
 
 
-def pptx_parser_function(filename, parsed_docs_directory):
+def pptx_parser_function(raw_filename, parsed_filename):
     print("No pptx parser yet :/")
 
 
