@@ -4,7 +4,11 @@ channels: !!python/tuple
   'defaults'
 dependencies:
 - anaconda::beautifulsoup4=4.5.3=py35_0
+- anaconda::click=6.7=py35_0
+- anaconda::flask=0.12.1=py35_0
+- anaconda::itsdangerous=0.24=py35_0
 - anaconda::requests=2.13.0=py35_0
+- anaconda::werkzeug=0.12.1=py35_0
 - bleach=1.5.0=py35_0
 - conda-forge::chardet=2.3.0=py35_0
 - cycler=0.10.0=py35_0
