@@ -1,0 +1,39 @@
+<!-- response to query -->
+
+<html>
+
+<head>
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+</head>
+
+<body>
+<div id = "container">
+	<div id = "response">
+		<strong>Your Query:</strong> {{query}}
+	</div>
+
+	<div id = "docList">
+		<ol>
+			{% for doc in docs %}
+			<li>
+			<a href="DOCLINK"><br>
+			<!--window of text
+			generate_wot(query, filepath)?-->
+			</li>
+			{% endfor %}
+
+		</ol>
+		<!-- to be added -->
+	</div>
+
+
+<!--	@app.route('/handler/' methods=['POST'])
+	def handler():
+		query = request.form['queryPost']
+		return render_template('response.html', query=query)
+-->
+
+</div>
+
+</body>
+</html>
