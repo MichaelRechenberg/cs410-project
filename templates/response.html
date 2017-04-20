@@ -16,7 +16,7 @@
 		<ol>
 			{% for doc in docs %}
 			<li>
-				<a href="{{doc.link}}"><!--FILENAME--></a><br>
+				<a href="{{doc.link}}">{{doc.file}}</a><br>
 				<p>{{doc.text}}</p>
 			</li>
 			{% endfor %}
