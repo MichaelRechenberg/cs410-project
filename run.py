@@ -27,7 +27,7 @@ def form():
 # deals with showing the response
 @app.route('/handler/', methods=['POST'])
 def handler():
-	query = request.form['queryPost']
+	query = request.form['query']
 	docs = [testdoc, seconddoc]
 	return render_template('response.html', query=query, docs=docs)
 
