@@ -1,14 +1,17 @@
 # CS 410
-# generate the window of text around the query given a query and
-# a filepath to a parsed document (.txt) that has
-# the query in it
 
 import os
 
+"""
+generate the window of text around the query given a query and
+a filepath to a parsed document (.txt) that has
+the query in it
+"""
 def generate_wot(query, filepath):
+
+	# get the directory of the file
 	file_dir = os.path.dirname(os.path.abspath(__file__))
 	full_filepath = os.path.join(file_dir, filepath)
-
 
 	window = ""
 	with open(full_filepath, 'r+') as f:
@@ -20,3 +23,9 @@ def generate_wot(query, filepath):
 
 
 	return window
+
+"""
+gets the filename from the filepath
+"""
+def make_filename(filepath):
+	return os.path.splitext(filepath)[0]
