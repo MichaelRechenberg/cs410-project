@@ -15,6 +15,11 @@ testdoc.file = defs.make_filename("raw/hello.txt")
 testdoc.link = "https://testsite.com/hello.txt"
 testdoc.text = defs.generate_wot("hello", "raw/hello.txt")
 
+seconddoc = Document()
+seconddoc.file = defs.make_filename("raw/test.txt")
+seconddoc.link = "https://testsite.com/test.txt"
+seconddoc.text = defs.generate_wot("hello", "raw/test.txt")
+
 @app.route('/')
 def form():
 	return render_template('query.html')
@@ -23,7 +28,7 @@ def form():
 @app.route('/handler/', methods=['POST'])
 def handler():
 	query = request.form['queryPost']
-	docs = [testdoc]
+	docs = [testdoc, seconddoc]
 	return render_template('response.html', query=query, docs=docs)
 
 # run
