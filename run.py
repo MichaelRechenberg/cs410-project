@@ -13,12 +13,12 @@ class Document():
 testdoc = Document()
 testdoc.file = defs.make_filename("raw/hello.txt")
 testdoc.link = "https://testsite.com/hello.txt"
-testdoc.text = defs.generate_wot("hello", "raw/hello.txt")
+testdoc.text = defs.generate_wot("test", "raw/hello.txt")
 
 seconddoc = Document()
 seconddoc.file = defs.make_filename("raw/test.txt")
 seconddoc.link = "https://testsite.com/test.txt"
-seconddoc.text = defs.generate_wot("hello", "raw/test.txt")
+seconddoc.text = defs.generate_wot("test", "raw/test.txt")
 
 @app.route('/')
 def form():
