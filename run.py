@@ -6,7 +6,7 @@ app = Flask(__name__)
 # loads the default query form
 
 class Document():
-	path = ""
+	file = ""
 	link = ""
 	text =""
 
