@@ -21,7 +21,7 @@ seconddoc.link = "https://testsite.com/test.txt"
 seconddoc.text = defs.generate_wot("test", "raw/test.txt")
 
 @app.route('/')
-def form():
+def main():
 	return render_template('query.html')
 
 # deals with showing the response
