@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, url_for, send_from_directory
 import os
 import socket
 
+pss = None
+
 if os.name != "nt":
     import fcntl
     import struct
@@ -39,11 +41,11 @@ app = Flask(__name__)
 def main():
 	return render_template('query.html')
 
-@app.route('/handler', methods = ['POST'])
-def handler():
+@app.route('/reponse', methods = ['POST'])
+def response():
 	query = request.form['query']
-	list parsed = scoreQuery
-	return render_template('', query = query)
+	#list parsed = scoreQuery
+	return render_template('response.html', query = query)
 
 @app.route('/raw/<path:doc_request>')
 def show_doc(doc_request):
