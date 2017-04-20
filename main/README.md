@@ -1,6 +1,6 @@
 This directory is a testing environment for testing out PSS.py
 
-Make sure you have the following directories
+Make sure you have the following directories for PSS_Runner to work
   parsed_docs/
   raw_docs/
   PSS/
