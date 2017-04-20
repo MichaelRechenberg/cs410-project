@@ -16,9 +16,8 @@
 		<ol>
 			{% for doc in docs %}
 			<li>
-			<a href="DOCLINK"><br>
-			<!--window of text
-			generate_wot(query, filepath)?-->
+				<a href="{{doc.link}}"><!--FILENAME--></a><br>
+				<p>{{doc.text}}</p>
 			</li>
 			{% endfor %}
 
