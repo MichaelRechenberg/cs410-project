@@ -81,7 +81,7 @@ def generate_wot(query, filepath):
 @app.route('/raw_docs/<path:doc_request>')
 def show_doc(doc_request):
   #local_ip = get_lan_ip
-  return send_from_directory(RAW_DOCS_DIRECTORY, doc_request);
+  return send_from_directory(pss.get_raw_docs_dir(), doc_request);
 
 if __name__ == '__main__':
 
