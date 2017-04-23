@@ -1,0 +1,330 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Synchronization, Part 3: Working with Mutexes And Semaphores</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Synchronization, Part 3: Working with Mutexes And Semaphores</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Synchronization, Part 3: Working with Mutexes And Semaphores
+            </div>
+            <h3>Synchronization, Part 3: Working with Mutexes And Semaphores</h3>
+
+<h2>What is an atomic operation?</h2>
+<p>To paraphrase Wikipedia, "An operation (or set of operations) is atomic or uninterruptible if it appears to the rest of the system to occur instantaneously."<br />
+Without locks, only simple CPU instructions ("read this byte from memory") are atomic (indivisible). On a single CPU system one could temporarily disable interrupts (so a sequence of operations cannot be interrupted) but in practice atomicity is achieved by using synchronization primitives, typically a mutex lock.</p>
+<p>Incrementing a variable (<code>i++</code>) is <em>not</em> atomic because it requires three distinct steps: Copying the bit pattern from memory into the CPU; performing a calculation using the CPU's registers; copying the bit pattern back to memory. During this increment sequence, another thread or process can still read the old value and other writes to the same memory would also be over-written when the increment sequence completes.</p>
+<h2>How do I use mutex lock to make my data-structure thread-safe?</h2>
+<p>Note, this is just an introduction - writing high-performance thread-safe data-structures requires it's own book! Here's a simple data structure (a stack) that is not thread-safe:</p>
+<pre class="highlight"><code class="language-C">// A simple fixed-sized stack (version 1)
+int count;
+double values[count];
+
+void push(double v) { values[count++] = v; }
+double pop() { return values[--count]; }
+int is_empty() { return count == 0; }</code></pre>
+
+
+<p>Version 1 of the stack is not thread-safe because if two threads call push or pop at the same time then the results or the stack can be inconsistent. For example, imagine if two threads call pop at the same time then both threads may read the same value, both may read the original count value.</p>
+<p>To turn this into a thread-safe data structure we need to identify the <em>critical sections</em> of our code  i.e. which section(s) of the code must only have one thread at a time. In the above example the <code>push</code>,<code>pop</code> and <code>is_empty</code> functions access the same variables (i.e. memory) and all critical sections for the stack. </p>
+<p>While <code>push</code> (and <code>pop</code>) is executing, the datastructure is an inconsistent state (for example the count may not have been written to, so may still contain the original value). By wrapping these methods with a mutex we can ensure that only one thread at a time can update (or read) the stack.</p>
+<p>A candidate 'solution' is shown below. Is it correct? If not, how will it fail?</p>
+<pre class="highlight"><code class="language-C">// An attempt at a thread-safe stack (version 2)
+int count;
+double values[count];
+pthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m2 = PTHREAD_MUTEX_INITIALIZER;
+
+void push() { pthread_mutex_lock(&amp;amp;m1); values[count++] = values; pthread_mutex_unlock(&amp;amp;m1); }
+double pop() { pthread_mutex_lock(&amp;amp;m2); double v=values[--count]; pthread_mutex_unlock(&amp;amp;m2); return v;}
+int is_empty() { pthread_mutex_lock(&amp;amp;m1); return count == 0; pthread_mutex_unlock(&amp;amp;m1); }</code></pre>
+
+
+<p>The above code ('version 2') contains at least one error. Take a moment to see if you can the error(s) and work out the consequence(s).</p>
+<p>If three called <code>push()</code> at the same time the lock <code>m1</code> ensures that only one thread at time manipulates the stack (two threads will need to wait until the first thread completes (calls unlock), then a second thread will be allowed to continue into the critical section and finally the third thread will be allowed to continue once the second thread has finished).</p>
+<p>A similar argument applies to concurrent calls (calls at the same time) to <code>pop</code>. However version 2 does not prevent push and pop from running at the same time because <code>push</code> and <code>pop</code> use two different mutex locks.</p>
+<p>The fix is simple in this case - use the same mutex lock for both the push and pop functions.</p>
+<p>The code has a second error; <code>is_empty</code> returns after the comparison and will not unlock the mutex. However the error would not be spotted immediately. For example, suppose one thread calls <code>is_empty</code> and a second thread later calls <code>push</code>. This thread would mysteriously stop. Using debugger you can discover that the thread is stuck at the lock() method inside the <code>push</code> method because the lock was never unlocked by the earlier <code>is_empty</code> call. Thus an oversight in one thread led to problems much later in time in an arbitrary other thread.</p>
+<p>A better version is shown below - </p>
+<pre class="highlight"><code class="language-C">// An attempt at a thread-safe stack (version 3)
+int count;
+double values[count];
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+void push(double v) { 
+  pthread_mutex_lock(&amp;amp;m); 
+  values[count++] = v;
+  pthread_mutex_unlock(&amp;amp;m);
+}
+double pop() {
+  pthread_mutex_lock(&amp;amp;m);
+  double v = values[--count];
+  pthread_mutex_unlock(&amp;amp;m);
+  return v;
+}
+int is_empty() {
+  pthread_mutex_lock(&amp;amp;m);
+  int result= count == 0;
+  pthread_mutex_unlock(&amp;amp;m);
+  return result;
+}</code></pre>
+
+
+<p>Version 3 is thread-safe (we have ensured mutual exclusion for all of the critical sections) however there are two points of note:<br />
+<em> <code>is_empty</code> is thread-safe but its result may already be out-of date i.e. the stack may no longer be empty by the time the thread gets the result!<br />
+</em> There is no protection against underflow (popping on an empty stack) or overflow (pushing onto an already-full stack)</p>
+<p>The latter point can be fixed using counting semaphores.</p>
+<p>The implementation assumes a single stack.  A more general purpose version might include the mutex as part of the memory struct and use pthread_mutex_init to initialize the mutex. For example,</p>
+<pre class="highlight"><code class="language-C">// Support for multiple stacks (each one has a mutex)
+typedef struct stack {
+  int count;
+  pthread_mutex_t m; 
+  double *values;
+} stack_t;
+
+stack_t* stack_create(int capacity) {
+  stack_t *result = malloc(sizeof(stack_t));
+  result-&amp;gt;count = 0;
+  result-&amp;gt;values = malloc(sizeof(double) * capacity);
+  pthread_mutex_init(&amp;amp;result-&amp;gt;m, NULL);
+  return result;
+}
+void stack_destroy(stack_t *s) {
+  free(s-&amp;gt;values);
+  pthread_mutex_destroy(&amp;amp;s-&amp;gt;m);
+  free(s);
+}
+// Warning no underflow or overflow checks!
+
+void push(stack_t *s, double v) { 
+  pthread_mutex_lock(&amp;amp;s-&amp;gt;m); 
+  s-&amp;gt;values[(s-&amp;gt;count)++] = v; 
+  pthread_mutex_unlock(&amp;amp;s-&amp;gt;m); }
+
+double pop(stack_t *s) { 
+  pthread_mutex_lock(&amp;amp;s-&amp;gt;m); 
+  double v = s-&amp;gt;values[--(s-&amp;gt;count)]; 
+  pthread_mutex_unlock(&amp;amp;s-&amp;gt;m); 
+  return v;
+}
+
+int is_empty(stack_t *s) { 
+  pthread_mutex_lock(&amp;amp;s-&amp;gt;m); 
+  int result = s-&amp;gt;count == 0; 
+  pthread_mutex_unlock(&amp;amp;s-&amp;gt;m);
+  return result;
+}</code></pre>
+
+
+<p>Example use:</p>
+<pre class="highlight"><code class="language-C">int main() {
+    stack_t *s1 = stack_create(10 /* Max capacity*/);
+    stack_t *s2 = stack_create(10);
+    push(s1, 3.141);
+    push(s2, pop(s1));
+    stack_destroy(s2);
+    stack_destroy(s1);
+}</code></pre>
+
+
+<h2>When can I destroy the mutex?</h2>
+<p>You can only destroy an unlocked mutex</p>
+<h2>Can I copy a pthread_mutex_t to a new memory locaton?</h2>
+<p>No, copying the bytes of the mutex to a new memory location and then using the copy is <em>not</em> supported.</p>
+<h2>What would a simple implementation of a mutex look like?</h2>
+<p>A simple (but incorrect!) suggestion is shown below. The <code>unlock</code> function simply unlocks the mutex and returns. The lock function first checks to see if the lock is already locked. If it is currently locked, it will keep checking again until another thread has unlocked the mutex.</p>
+<pre class="highlight"><code class="language-C">// Version 1 (Incorrect!)
+
+void lock(mutex_t *m) {
+  while(m-&amp;gt;locked) { /*Locked? Nevermind - just loop and check again!*/ }
+
+  m-&amp;gt;locked = 1;
+}
+void unlock(mutex_t *m) {
+  m-&amp;gt;locked = 0;
+}</code></pre>
+
+
+<p>Version 1 uses 'busy-waiting' (unnecessarily wasting CPU resources) however there is a more serious problem: We have a race-condition! </p>
+<p>If two threads both called <code>lock</code> concurrently it is possible that both threads would read 'm_locked' as zero. Thus both threads would believe they have exclusive access to the lock and both threads will continue. Ooops!</p>
+<p>We might attempt to reduce the CPU overhead a little by calling <code>pthread_yield()</code> inside the loop  - pthread_yield suggests to the operating system that the thread does not the CPU for a short while, so the CPU may be assigned to threads that are waiting to run. But does not fix the race-condition. We need a better implementation - can you work how to prevent the race-condition?</p>
+<h2>How can I force my threads to wait if the stack is empty or full?</h2>
+<p>Use counting semaphores! Use a counting semaphore to keep track of how many spaces remain and another semaphore to keep to track the number of items in the stack. We will call these two semaphores 'sremain' and 'sitems'. Remember <code>sem_wait</code> will wait if the semaphore's count has been decremented to zero (by another thread calling sem_post).</p>
+<pre class="highlight"><code class="language-C">// Sketch #1
+
+sem_t sitems;
+sem_t sremain;
+void stack_init(){
+  sem_init(&amp;amp;sitems, 0, 0);
+  sem_init(&amp;amp;sremain, 0, 10);
+}
+
+
+double pop() {
+  // Wait until there's at least one item
+  sem_wait(&amp;amp;sitems);
+  ...
+
+void push(double v) {
+  // Wait until there's at least one space
+  sem_wait(&amp;amp;sremain);
+  ...</code></pre>
+
+
+<p>Sketch #2  has implemented the <code>post</code> too early. Another thread waiting in push can erroneously attempt to write into a full stack (and similarly a thread waiting in the pop() is allowed to continue too early).</p>
+<pre class="highlight"><code class="language-C">// Sketch #2 (Error!)
+double pop() {
+  // Wait until there's at least one item
+  sem_wait(&amp;amp;sitems);
+  sem_post(&amp;amp;sremain); // error! wakes up pushing() thread too early
+  return values[--count];
+}
+void push(double v) {
+  // Wait until there's at least one space
+  sem_wait(&amp;amp;sremain);
+  sem_post(&amp;amp;sitems); // error! wakes up a popping() thread too early
+  values[count++] = v;
+}</code></pre>
+
+
+<p>Sketch 3 implements the correct semaphore logic but can you spot the error?</p>
+<pre class="highlight"><code class="language-C">// Sketch #3 (Error!)
+double pop() {
+  // Wait until there's at least one item
+  sem_wait(&amp;amp;sitems);
+  double v= values[--count];
+  sem_post(&amp;amp;sremain);
+  return v;
+}
+
+void push(double v) {
+  // Wait until there's at least one space
+  sem_wait(&amp;amp;sremain);
+  values[count++] = v;
+  sem_post(&amp;amp;sitems); 
+}</code></pre>
+
+
+<p>Sketch 3 correctly enforces buffer full and buffer empty conditions using semaphores. However there is no <em>mutual exclusion</em>: Two threads can be in the <em>critical section</em> at the same time, which would corrupt the data structure (or least lead to data loss). The fix is to wrap a mutex around the critical section:</p>
+<pre class="highlight"><code class="language-C">// Simple single stack - see above example on how to convert this into a multiple stacks.
+// Also a robust POSIX implementation would check for EINTR and error codes of sem_wait.
+
+// PTHREAD_MUTEX_INITIALIZER for statics (use pthread_mutex_init() for stack/heap memory)
+
+pthread_mutex_t m= PTHREAD_MUTEX_INITIALIZER; 
+int count = 0;
+double values[10];
+sem_t sitems, sremain;
+
+void init() {
+  sem_init(&amp;amp;sitems, 0, 0);
+  sem_init(&amp;amp;sremains, 0, 10); // 10 spaces
+}
+
+double pop() {
+  // Wait until there's at least one item
+  sem_wait(&amp;amp;sitems);
+
+  pthread_mutex_lock(&amp;amp;m); // CRITICAL SECTION
+  double v= values[--count];
+  pthread_mutex_unlock(&amp;amp;m);
+
+  sem_post(&amp;amp;sremain); // Hey world, there's at least one space
+  return v;
+}
+
+void push(double v) {
+  // Wait until there's at least one space
+  sem_wait(&amp;amp;sremain);
+
+  pthread_mutex_lock(&amp;amp;m); // CRITICAL SECTION
+  values[count++] = v;
+  pthread_mutex_unlock(&amp;amp;m);
+
+  sem_post(&amp;amp;sitems); // Hey world, there's at least one item
+}
+// Note a robust solution will need to check sem_wait's result for EINTR (more about this later)</code></pre>
+
+
+<h2>What are the common Mutex Gotchas?</h2>
+<ul>
+<li>Locking/unlocking the wrong mutex (due to a silly typo)</li>
+<li>Not unlocking a mutex (due to say an early return during an error condition)</li>
+<li>Resource leak (not calling <code>pthread_mutex_destroy</code>)</li>
+<li>Using an unitialized mutex (or using a mutex that has already been destroyed)</li>
+<li>Locking a mutex twice on a thread (without unlocking first)</li>
+<li>Deadlock and Priority Inversion (we will talk about these later)</li>
+</ul>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

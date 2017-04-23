@@ -1,0 +1,197 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nonblocking I O, select(), and epoll</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Nonblocking I O, select(), and epoll</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Nonblocking I O, select(), and epoll
+            </div>
+            <h3>Nonblocking I O, select(), and epoll</h3>
+
+<h3>Don't waste time waiting</h3>
+<p>Normally, when you call <code>read()</code>, if the data is not available yet it will wait until the data is ready before the function returns.  When you're reading data from a disk, that delay may not be long, but when you're reading from a slow network connection it may take a long time for that data to arrive, if it ever arrives.  </p>
+<p>POSIX lets you set a flag on a file descriptor such that any call to <code>read()</code> on that file descriptor will return immediately, whether it has finished or not.  With your file descriptor in this mode, your call to <code>read()</code> will start<br />
+the read operation, and while it's working you can do other useful work.  This is called "nonblocking" mode,<br />
+since the call to <code>read()</code> doesn't block.</p>
+<p>To set a file descriptor to be nonblocking:</p>
+<pre><code>// fd is my file descriptor
+int flags = fcntl(fd, F_GETFL, 0);
+fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+</code></pre>
+<p>For a socket, you can create it in nonblocking mode by adding <code>SOCK_NONBLOCK</code> to the second argument to <code>socket()</code>:</p>
+<pre><code>fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+</code></pre>
+<p>When a file is in nonblocking mode and you call <code>read()</code>, it will return immediately with whatever bytes are available.<br />
+Say 100 bytes have arrived from the server at the other end of your socket and you call <code>read(fd, buf, 150)</code>.<br />
+Read will return immediately with a value of 100, meaning it read 100 of the 150 bytes you asked for.<br />
+Say you tried to read the remaining data with a call to <code>read(fd, buf+100, 50)</code>, but the last 50 bytes still hadn't<br />
+arrived yet.  <code>read()</code> would return -1 and set the global error variable <strong>errno</strong> to either<br />
+EAGAIN or EWOULDBLOCK.  That's the system's way of telling you the data isn't ready yet.</p>
+<p><code>write()</code> also works in nonblocking mode.  Say you want to send 40,000 bytes to a remote server using a socket.<br />
+The system can only send so many bytes at a time. Common systems can send about 23,000 bytes at a time. In nonblocking mode, <code>write(fd, buf, 40000)</code> would return the number of bytes it was able to<br />
+send immediately, or about 23,000.  If you called <code>write()</code> right away again, it would return -1 and set errno to<br />
+EAGAIN or EWOULDBLOCK. That's the system's way of telling you it's still busy sending the last chunk of data,<br />
+and isn't ready to send more yet.</p>
+<h3>How do I check when the I/O has finished?</h3>
+<p>There are a few ways.  Let's see how to do it using <em>select</em> and <em>epoll</em>.</p>
+<h4>select</h4>
+<pre><code>int select(int nfds, 
+           fd_set *readfds, 
+           fd_set *writefds,
+           fd_set *exceptfds, 
+           struct timeval *timeout);
+</code></pre>
+<p>Given three sets of file descriptors, <code>select()</code> will wait for any of those file descriptors to become 'ready'.<br />
+<em> readfds - a file descriptor in readfds is ready when there is data that can be read or EOF has been reached.<br />
+</em> writefds - a file descriptor in writefds is ready when a call to write() will succeed.<br />
+* exceptfds - system-specific, not well-defined.  Just pass NULL for this.</p>
+<p><code>select()</code> returns the total number of file descriptors that are ready.  If none of them become<br />
+ready during the time defined by <em>timeout</em>, it will return 0.  After <code>select()</code> returns, the <br />
+caller will need to loop<br />
+through the file descriptors in readfds and/or writefds to see which ones are ready.</p>
+<pre><code>fd_set readfds, writefds;
+FD_ZERO(&amp;amp;readfds);
+FD_ZERO(&amp;amp;writefds);
+for (int i=0; i &amp;lt; read_fd_count; i++)
+  FD_SET(my_read_fds[i], &amp;amp;readfds);
+for (int i=0; i &amp;lt; write_fd_count; i++)
+  FD_SET(my_write_fds[i], &amp;amp;writefds);
+
+struct timeval timeout;
+timeout.tv_sec = 3;
+timeout.tv_usec = 0;
+
+int num_ready = select(FD_SETSIZE, &amp;amp;readfds, &amp;amp;writefds, NULL, &amp;amp;timeout);
+
+if (num_ready &amp;lt; 0) {
+  perror("error in select()");
+} else if (num_ready == 0) {
+  printf("timeout\n");
+} else {
+  for (int i=0; i &amp;lt; read_fd_count; i++)
+    if (FD_ISSET(my_read_fds[i], &amp;amp;readfds))
+      printf("fd %d is ready for reading\n", my_read_fds[i]);
+  for (int i=0; i &amp;lt; write_fd_count; i++)
+    if (FD_ISSET(my_write_fds[i], &amp;amp;writefds))
+      printf("fd %d is ready for writing\n", my_write_fds[i]);
+}
+</code></pre>
+<p><a href="http://pubs.opengroup.org/onlinepubs/9699919799/functions/select.html">For more information on select()</a></p>
+<h4>epoll</h4>
+<p><em>epoll</em> is not part of POSIX, but it is supported by Linux.  It is a more efficient way to wait for many<br />
+file descriptors.  It will tell you exactly which descriptors are ready. It even gives you a way to store<br />
+a small amount of data with each descriptor, like an array index or a pointer, making it easier to access<br />
+your data associated with that descriptor.</p>
+<p>To use epoll, first you must create a special file descriptor with <a href="http://linux.die.net/man/2/epoll_create">epoll_create()</a>.  You won't read or write to this file<br />
+descriptor; you'll just pass it to the other epoll_xxx functions and call<br />
+close() on it at the end.</p>
+<pre><code>epfd = epoll_create(1);
+</code></pre>
+<p>For each file descriptor you want to monitor with epoll, you'll need to add it <br />
+to the epoll data structures <br />
+using <a href="http://linux.die.net/man/2/epoll_ctl">epoll_ctl()</a> with the <code>EPOLL_CTL_ADD</code> option.  You can add any<br />
+number of file descriptors to it.</p>
+<pre><code>struct epoll_event event;
+event.events = EPOLLOUT;  // EPOLLIN==read, EPOLLOUT==write
+event.data.ptr = mypointer;
+epoll_ctl(epfd, EPOLL_CTL_ADD, mypointer-&amp;gt;fd, &amp;amp;event)
+</code></pre>
+<p>To wait for some of the file descriptors to become ready, use <a href="http://linux.die.net/man/2/epoll_wait">epoll_wait()</a>.<br />
+The epoll_event struct that it fills out will contain the data you provided in event.data when you<br />
+added this file descriptor. This makes it easy for you to look up your own data associated<br />
+with this file descriptor.</p>
+<pre><code>int num_ready = epoll_wait(epfd, &amp;amp;event, 1, timeout_milliseconds);
+if (num_ready &amp;gt; 0) {
+  MyData *mypointer = (MyData*) event.data.ptr;
+  printf("ready to write on %d\n", mypointer-&amp;gt;fd);
+}
+</code></pre>
+<p>Say you were waiting to write data to a file descriptor, but now you want to wait to read data from it.<br />
+Just use <code>epoll_ctl()</code> with the <code>EPOLL_CTL_MOD</code> option to change the type of operation you're monitoring.</p>
+<pre><code>event.events = EPOLLOUT;
+event.data.ptr = mypointer;
+epoll_ctl(epfd, EPOLL_CTL_MOD, mypointer-&amp;gt;fd, &amp;amp;event);
+</code></pre>
+<p>To unsubscribe one file descriptor from epoll while leaving others active, use <code>epoll_ctl()</code> with the <code>EPOLL_CTL_DEL</code> option.</p>
+<pre><code>epoll_ctl(epfd, EPOLL_CTL_DEL, mypointer-&amp;gt;fd, NULL);
+</code></pre>
+<p>To shut down an epoll instance, close its file descriptor.</p>
+<pre><code>close(epfd);
+</code></pre>
+<p>In addition to nonblocking <code>read()</code> and <code>write()</code>, any calls to <code>connect()</code> on a nonblocking socket will also be<br />
+nonblocking. To wait for the connection to complete, use <code>select()</code> or epoll to wait for the socket to be writable.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

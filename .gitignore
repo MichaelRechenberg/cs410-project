@@ -1,0 +1,5 @@
+*.pyc
+*.pynb
+*.ipynb_checkpoints
+__pycache__
+*.swp

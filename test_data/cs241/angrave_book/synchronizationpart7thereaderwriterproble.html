@@ -1,0 +1,143 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Synchronization, Part 7: The Reader Writer Proble</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Synchronization, Part 7: The Reader Writer Proble</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Synchronization, Part 7: The Reader Writer Proble
+            </div>
+            <h3>Synchronization, Part 7: The Reader Writer Proble</h3>
+
+<h2>What is the Reader Writer Problem?</h2>
+<p>Imagine you had a key-value map data structure which is used by many threads. Multiple threads should be able to look up (read) values at the same time provided the data structure is not being written to. The writers are not so gregarious - to avoid data corruption, only one thread at a time may modify (<code>write</code>) the data structure (and no readers may be reading at that time). </p>
+<p>The is an example of the <em>Reader Writer Problem</em>. Namely how can we efficiently synchronize multiple readers and writers such that multiple readers can read together but a writer gets exclusive access?</p>
+<p>An incorrect attempt is shown below ("lock" is a shorthand for <code>pthread_mutex_lock</code>):</p>
+<p>&lt;table&gt;&lt;tr&gt;&lt;td&gt;<br />
+&lt;pre&gt;read()<br />
+  lock(m)<br />
+  // do read stuff<br />
+  unlock(m)<br />
+&lt;/pre&gt;<br />
+&lt;/td&gt;&lt;td&gt;<br />
+&lt;pre&gt;write()<br />
+  lock(m)<br />
+  // do write stuff<br />
+  unlock(m)<br />
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</p>
+<p>At least our first attempt does not suffer from data corruption (readers must wait while a writer is writing and vice versa)! However readers must also wait for other readers. So let's try another implementation..</p>
+<p>Attempt #2:<br />
+&lt;table&gt;&lt;tr&gt;&lt;td&gt;<br />
+&lt;pre&gt;read() {<br />
+  while(writing) {/<em>spin</em>/}<br />
+  reading = 1<br />
+  // do read stuff<br />
+  reading = 0<br />
+&lt;/pre&gt;<br />
+&lt;/td&gt;&lt;td&gt;<br />
+&lt;pre&gt;write() {<br />
+  while(reading || writing) {/<em>spin</em>/}<br />
+  writing = 1<br />
+  // do write stuff<br />
+  writing = 0<br />
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</p>
+<p>Our second attempt suffers from a race condition - imagine if two threads both called <code>read</code> and <code>write</code> (or both called write) at the same time. Both threads would be able to proceed! Secondly, we can have multiple readers and multiple writers, so lets keep track of the total number of readers or writers. Which brings us to attempt #3,</p>
+<p>&lt;table&gt;&lt;tr&gt;&lt;td&gt;<br />
+&lt;pre&gt;read() {<br />
+  lock(&amp;m)<br />
+  while (writers) {<br />
+    pthread_cond_wait(&amp;cv,&amp;m)<br />
+  }<br />
+  readers++<br />
+  // do read stuff<br />
+  readers--<br />
+  pthread_cond_signal(&amp;cv)<br />
+  unlock(&amp;m)<br />
+&lt;/pre&gt;<br />
+&lt;/td&gt;&lt;td&gt;<br />
+&lt;pre&gt;write() {<br />
+  lock(&amp;m)<br />
+  while (readers || writers) {<br />
+    pthread_cond_wait(&amp;cv,&amp;m)<br />
+  }<br />
+  writers++<br />
+  // do write stuff<br />
+  writers--<br />
+  pthread_cond_signal(&amp;cv)<br />
+  unlock(&amp;m)<br />
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</p>
+<p>This solution might appear to work when lightly tested however it suffers from several drawbacks  - can you see them? We will discuss these in a future section.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

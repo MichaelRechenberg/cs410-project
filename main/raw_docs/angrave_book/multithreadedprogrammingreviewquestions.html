@@ -1,0 +1,206 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Multi threaded Programming: Review Questions</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Multi threaded Programming: Review Questions</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Multi threaded Programming: Review Questions
+            </div>
+            <h3>Multi threaded Programming: Review Questions</h3>
+
+<p>&gt; Warning - question numbers subject to change</p>
+<h2>Q1</h2>
+<p>Is the following code thread-safe? Redesign the following code to be thread-safe. Hint: A mutex is unnecessary if the message memory is unique to each call.</p>
+<pre class="highlight"><code class="language-C">static char message[20];
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZAER;
+
+void format(int v) {
+  pthread_mutex_lock(&amp;amp;mutex);
+  sprintf(message,&quot;:%d:&quot;,v);
+  pthread_mutex_unlock(&amp;amp;mutex);
+  return message;
+}</code></pre>
+
+
+<h2>Q2</h2>
+<p>Which one of the following does not cause a process to exit?<br />
+<em> Returning from the pthread's starting function in the last running thread.<br />
+</em> The original thread returning from main.<br />
+<em> Any thread causing a segmentation fault.<br />
+</em> Any thread calling <code>exit</code>.<br />
+* Calling <code>pthread_exit</code> in the main thread with other threads still running.</p>
+<h2>Q3</h2>
+<p>Write a mathematical expression for the number of "W" characters that will be printed by the following program. Assume a,b,c,d are small positive integers. Your answer may use a 'min' function that returns its lowest valued argument.</p>
+<pre class="highlight"><code class="language-C">unsigned int a=...,b=...,c=...,d=...;
+
+void* func(void* ptr) {
+  char m = * (char*)ptr;
+  if(m == 'P') sem_post(s);
+  if(m == 'W') sem_wait(s);
+  putchar(m);
+  return NULL;
+}
+
+int main(int argv, char**argc) {
+  sem_init(s,0, a);
+  while(b--) pthread_create(&amp;amp;tid,NULL,func,&quot;W&quot;); 
+  while(c--) pthread_create(&amp;amp;tid,NULL,func,&quot;P&quot;); 
+  while(d--) pthread_create(&amp;amp;tid,NULL,func,&quot;W&quot;); 
+  pthread_exit(NULL); 
+  /*Process will finish when all threads have exited */
+}</code></pre>
+
+
+<h2>Q4</h2>
+<p>Complete the following code. The following code is supposed to print alternating <code>A</code> and <code>B</code>. It represents two threads that take turns to execute.  Add condition variable calls to <code>func</code> so that the waiting thread does not need to continually check the <code>turn</code> variable. Q: Is pthread_cond_broadcast necessary or is pthread_cond_signal sufficient?</p>
+<pre class="highlight"><code class="language-C">pthread_cond_t cv = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+
+void* turn;
+
+void* func(void*mesg) {
+  while(1) {
+// Add mutex lock and condition variable calls ...
+
+    while(turn == mesg) { /* poll again ... Change me - This busy loop burns CPU time!*/ }
+
+    /* Do stuff on this thread*/
+    puts( (char*) mesg);
+    turn = mesg;
+
+  }
+  return 0;
+}
+
+int main(int argc, char**argv){
+  pthread_t tid1;
+  pthread_create(&amp;amp;tid1,NULL, func, &quot;A&quot;);
+  func(&quot;B&quot;); // no need to create another thread - just use the main thread
+  return 0;
+}</code></pre>
+
+
+<h2>Q5</h2>
+<p>Identify the critical sections in the given code. Add mutex locking to make the code thread safe. Add condition variable calls so that <code>total</code> never becomes negative or above 1000. Instead the call should block until it is safe to proceed. Explain why <code>pthread_cond_broadcast</code> is necessary.</p>
+<pre class="highlight"><code class="language-C">int total;
+void add(int value) {
+ if(value) &amp;lt;1) return;
+ total += value;
+}
+void sub(int value) {
+ if(value) &amp;lt;1) return;
+ total -= value;
+}</code></pre>
+
+
+<h2>Q6</h2>
+<p>A non-threadsafe data structure has <code>size()</code> <code>enq</code> and <code>deq</code> methods. Use condition variable and mutex lock to complete the thread-safe, blocking versions.</p>
+<pre class="highlight"><code class="language-C">void enqueue(void* data) {
+  // should block if the size() would be become greater than 256
+  enq(data);
+}
+void* dequeue() {
+  // should block if size() is 0
+  return deq();
+}</code></pre>
+
+
+<h2>Q7</h2>
+<p>Your startup offers path planning using latest traffic information. Your overpaid intern has created a non-threadsafe data structure with two functions: <code>shortest</code> (which uses but does not modify the graph) and <code>set_edge</code> (which modifies the graph).</p>
+<pre class="highlight"><code class="language-C">graph_t* create_graph(char* filename); // called once
+
+// returns a new heap object that is the shortest path from vertex i to j
+path_t* shortest(graph_t* graph, int i, int j); 
+
+// updates edge from vertex i to j
+void set_edge(graph_t* graph, int i, int j, double time); </code></pre>
+
+
+<p>For performance, multiple threads must be able to call <code>shortest</code> at the same time but the graph can only be modified by one thread when no threads other are executing inside <code>shortest</code> or <code>set_edge</code>.</p>
+<p>Use mutex lock and condition variables to implement a reader-writer solution. An incomplete attempt is shown below. Though this attempt is threadsafe (thus sufficient for demo day!), it does not allow multiple threads to calculate <code>shortest</code> path at the same time and will not have sufficient throughput.</p>
+<pre class="highlight"><code class="language-C">path_t* shortest_safe(graph_t* graph, int i, int j) {
+  pthread_mutex_lock(&amp;amp;m);
+  path_t* path = shortest(graph, i, j);
+  pthread_mutex_unlock(&amp;amp;m);
+  return path;
+}
+void set_edge_safe(graph_t* graph, int i, int j, double dist) {
+  pthread_mutex_lock(&amp;amp;m);
+  set_edge(graph, i, j, dist);
+  pthread_mutex_unlock(&amp;amp;m);
+}</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

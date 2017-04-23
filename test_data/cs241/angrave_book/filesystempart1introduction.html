@@ -1,0 +1,161 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 1: Introduction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 1: Introduction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 1: Introduction
+            </div>
+            <h3>File System, Part 1: Introduction</h3>
+
+<h2>Design a file system! What are your design goals?</h2>
+<p>The design of a file system is difficult problem because there many high-level design goals that we'd like to satisfy. An incomplete list of ideal goals include:</p>
+<ul>
+<li>Reliable and robust (even with hardware failures or incomplete writes dues to power loss)</li>
+<li>Access (security) controls</li>
+<li>Accounting and quotas</li>
+<li>Indexing and search</li>
+<li>Versioning and backup capabilities</li>
+<li>Encryption</li>
+<li>Automatic compression</li>
+<li>High performance (e.g. Caching in-memory)</li>
+<li>Efficient use of storage de-duplication</li>
+</ul>
+<p>Not all filesystems natively support all of these goals. For example, many filesystems do not automatically compress rarely-used files</p>
+<h2>What are <code>.</code>, <code>..</code>, and <code>...</code>?</h2>
+<p><code>.</code> represents the current directory  </p>
+<p><code>..</code> represents the parent directory  </p>
+<p><code>...</code> is NOT a valid representation of any directory (this not the grandparent directory)</p>
+<h2>What are absolute and relative paths?</h2>
+<p>Absolute paths are paths that start from the 'root node' of your directory tree. Relative paths are paths that start from your current position in the tree.</p>
+<h2>What are some examples of relative and absolute paths?</h2>
+<p>If you start in your home directory ("~" for short), then <code>Desktop/cs241</code> would be a relative path. Its absolute path counterpart might be something like <code>/Users/[yourname]/Desktop/cs241</code>.</p>
+<h2>How do I simplify <code>a/b/../c/./</code>?</h2>
+<p>Remember that <code>..</code> means 'parent folder' and that <code>.</code> means 'current folder'.</p>
+<p>Example: <code>a/b/../c/./</code><br />
+- Step 1: <code>cd a</code> (in a)<br />
+- Step 2: <code>cd b</code> (in a/b)<br />
+- Step 3: <code>cd ..</code> (in a, because .. represents 'parent folder')<br />
+- Step 4: <code>cd c</code> (in a/c)<br />
+- Step 5: <code>cd .</code> (in a/c, because . represents 'current folder')</p>
+<p>Thus, this path can be simplified to <code>a/c</code>.</p>
+<h2>Why make disk blocks the same size as memory pages?</h2>
+<p>To support virtual memory, so we can page stuff in and out of memory.</p>
+<h2>What information do we want to store for each file?</h2>
+<ul>
+<li>Filename</li>
+<li>File size</li>
+<li>Time created, last modified, last accessed</li>
+<li>Permissions</li>
+<li>Filepath</li>
+<li>Checksum</li>
+<li>File data (inode)</li>
+</ul>
+<h2>What are the traditional permissions: user – group – other permissions for a file?</h2>
+<p>Some common file permissions include:<br />
+* 755: <code>rwx r-x r-x</code></p>
+<p>user: <code>rwx</code>, group: <code>r-x</code>, others: <code>r-x</code></p>
+<p>User can read, write and execute. Group and others can only read and execute.<br />
+* 644: <code>rw- r-- r--</code></p>
+<p>user: <code>rw-</code>, group: <code>r--</code>, others: <code>r--</code></p>
+<p>User can read and write. Group and others can only read.</p>
+<h2>What are the the 3 permission bits for a regular file for each role?</h2>
+<ul>
+<li>Read (most significant bit)  </li>
+<li>Write (2nd bit)  </li>
+<li>Execute (least significant bit)</li>
+</ul>
+<h2>What do "644" "755" mean?</h2>
+<p>These are examples of permissions in octal format (base 8). Each octal digit corresponds to a different role (user, group, world).</p>
+<p>We can read permissions in octal format as follows:<br />
+<em> 644 - R/W user permissions, R group permissions, R world permissions<br />
+</em> 755 - R/W/X user permissions, R/X group permissions, R/X world permissions</p>
+<h2>What is an inode? Which of the above items is stored in the inode?</h2>
+<p>From <a href="http://en.wikipedia.org/wiki/Inode">Wikipedia</a>:</p>
+<p>&gt; <em>In a Unix-style file system, an index node, informally referred to as an inode, is a data structure used to represent a filesystem object, which can be one of various things including a file or a directory. Each inode stores the attributes and disk block location(s) of the filesystem object's data. Filesystem object attributes may include manipulation metadata (e.g. change, access, modify time), as well as owner and permission data (e.g. group-id, user-id, permissions).</em></p>
+<h2>How does inode store the file contents?</h2>
+<p><img alt="" src="http://upload.wikimedia.org/wikipedia/commons/a/a2/Ext2-inode.gif" /></p>
+<p>Image source: <a href="http://en.wikipedia.org/wiki/Ext2&gt;">http://en.wikipedia.org/wiki/Ext2<br />
+&gt;</a> "All problems in computer science can be solved by another level of indirection." - David Wheeler</p>
+<h2>How many pointers can you store in each indirection table?</h2>
+<p>As a worked example, suppose we divide the disk into 4KB blocks and we want to address up to 2^32 blocks.</p>
+<p>The maximum disk size is 4KB *2^32 = 16TB  (remember 2^10 = 1024)</p>
+<p>A disk block can store 4KB / 4B (each pointer needs to be 32 bits) = 1024 pointers. Each pointer refers to a 4KB disk block - so you can refer up to 1024*4KB = 4MB of data</p>
+<p>For the same disk configuration, a double indirect block stores 1024 pointers to 1024 indirection tables. Thus a double-indirect block can refer up to 1024 * 4MB = 4GB of data.</p>
+<p>Similarly, a triple indirect block can refer up to 4TB of data.</p>
+<p><a href="https://github.com/angrave/SystemProgramming/wiki/File-System,-Part-2:-Files-are-inodes-(everything-else-is-just-data...)">Go to File System: Part 2</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

@@ -1,0 +1,305 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pthreads, Part 2: Usage in Practice</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Pthreads, Part 2: Usage in Practice</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Pthreads, Part 2: Usage in Practice
+            </div>
+            <h3>Pthreads, Part 2: Usage in Practice</h3>
+
+<h2>How do I create a pthread?</h2>
+<p>See <a href="https://github.com/angrave/SystemProgramming/wiki/Pthreads,-Part-1:-Introduction">Pthreads Part 1</a> which introduces <code>pthread_create</code> and <code>pthread_join</code></p>
+<h2>If I call <code>pthread_create</code> twice how many stacks does my process have?</h2>
+<p>Your process will contain three stacks - one for each thread. The first thread is created when the process starts and you created two more. Actually there can be more stacks than this but let's ignore that complication for now. The important idea is that each thread requires a stack because the stack contains automatic variables and the old CPU PC register so that it can back to executing the calling function after the function is finished.</p>
+<h2>What is the difference between a process and a thread?</h2>
+<p>In addition, unlike processes, threads within the same process can share the same global memory (data and heap segments).</p>
+<h2>What does <code>pthread_cancel</code> do?</h2>
+<p>Stops a thread. Note the thread may not actually be stopped immediately. For example it can be terminated when the thread makes an operating system call (e.g. <code>write</code>).</p>
+<p>In practice <code>pthread_cancel</code> is rarely used because it does not give a thread an opportunity to clean up after itself (for example, it may have opened some files).<br />
+An alternative implementation is to use a boolean (int) variable whose value is used to inform other threads that they should finish and clean up.</p>
+<h2>What is the difference between <code>exit</code> and <code>pthread_exit</code>?</h2>
+<p><code>exit(42)</code> exits the entire process and sets the processes exit value.  This is equivalent to <code>return 42</code> in the main method. All threads inside the process are stopped.</p>
+<p><code>pthread_exit(void *)</code> only stops the calling thread i.e. the thread never returns after calling <code>pthread_exit</code>. The pthread library will automatically finish the process if there are no other threads running. <code>pthread_exit(...)</code> is equivalent to returning from the thread's function; both finish the thread and also set the return value (void *pointer) for the thread.</p>
+<p>Calling <code>pthread_exit</code> in the the <code>main</code> thread is a common way for simple programs to ensure that all threads finish. For example, in the following program, the  <code>myfunc</code> threads will probably not have time to get started.</p>
+<pre class="highlight"><code class="language-C">int main() {
+  pthread_t tid1, tid2;
+  pthread_create(&amp;amp;tid1, NULL, myfunc, &quot;Jabberwocky&quot;);
+  pthread_create(&amp;amp;tid2, NULL, myfunc, &quot;Vorpel&quot;);
+  exit(42); //or return 42;
+
+  // No code is run after exit
+}</code></pre>
+
+
+<p>The next two programs will wait for the new threads to finish-</p>
+<pre class="highlight"><code class="language-C">int main() {
+  pthread_t tid1, tid2;
+  pthread_create(&amp;amp;tid1, NULL, myfunc, &quot;Jabberwocky&quot;);
+  pthread_create(&amp;amp;tid2, NULL, myfunc, &quot;Vorpel&quot;);
+  pthread_exit(NULL); 
+
+  // No code is run after pthread_exit
+  // However process will continue to exist until both threads have finished
+}</code></pre>
+
+
+<p>Alternatively, we join on each thread (i.e. wait for it to finish) before we return from main (or call exit).</p>
+<pre class="highlight"><code class="language-C">int main() {
+  pthread_t tid1, tid2;
+  pthread_create(&amp;amp;tid1, NULL, myfunc, &quot;Jabberwocky&quot;);
+  pthread_create(&amp;amp;tid2, NULL, myfunc, &quot;Vorpel&quot;);
+  // wait for both threads to finish :
+  void* result;
+  pthread_join(tid1, &amp;amp;result);
+  pthread_join(tid2, &amp;amp;result); 
+  return 42;
+}</code></pre>
+
+
+<p>Note the pthread_exit version creates thread zombies, however this is not a long-running processes, so we don't care.</p>
+<h2>How can a thread be terminated?</h2>
+<ul>
+<li>Returning from the thread function</li>
+<li>Calling <code>pthread_exit</code></li>
+<li>Cancelling the thread with <code>pthread_cancel</code></li>
+<li>Terminating the process (e.g. SIGTERM); exit(); returning from <code>main</code></li>
+</ul>
+<h2>What is the purpose of pthread_join?</h2>
+<ul>
+<li>Wait for a thread to finish</li>
+<li>Clean up thread resources.</li>
+</ul>
+<h2>What happens if you don't call <code>pthread_join</code>?</h2>
+<p>Finished threads will continue to consume resources. Eventually, if enough threads are created, <code>pthread_create</code> will fail.<br />
+In practice, this is only an issue for long-runnning processes but is not an issue for simple, short-lived processes as all thread resources are automatically freed when the process exits.</p>
+<h2>Should I use <code>pthread_exit</code> or <code>pthread_join</code>?</h2>
+<p>Both <code>pthread_exit</code> and <code>pthread_join</code> will let the other threads finish on their own (even if called in the main thread). However, only <code>pthread_join</code> will return to you when the specified thread finishes. <code>pthread_exit</code> does not wait and will immediately end your thread and give you no chance to continue executing.</p>
+<h2>Can you pass pointers to stack variables from one thread to another?</h2>
+<p>Yes. However you need to be very careful about the lifetime of stack variables.</p>
+<pre class="highlight"><code>pthread start_threads() {
+  int start = 42;
+  pthread_t tid;
+  pthread_create(&amp;amp;tid, 0, myfunc, &amp;amp;start); // ERROR!
+  return tid;
+}</code></pre>
+
+
+<p>The above code is invalid because the function <code>start_threads</code> will likely return before <code>myfunc</code> even starts. The function passes the address-of <code>start</code>, however by the time <code>myfunc</code> is executes, <code>start</code> is no longer in scope and its address will re-used for another variable.</p>
+<p>The following code is valid because the lifetime of the stack variable is longer than the background thread.</p>
+<pre class="highlight"><code>void start_threads() {
+  int start = 42;
+  void *result;
+  pthread_t tid;
+  pthread_create(&amp;amp;tid, 0, myfunc, &amp;amp;start); // OK - start will be valid!
+  pthread_join(tid, &amp;amp;result);
+}</code></pre>
+
+
+<h2>How can I create ten threads with different starting values.</h2>
+<p>The following code is supposed to start ten threads with values 0,1,2,3,...9<br />
+However, when run prints out <code>1 7 8 8 8 8 8 8 8 10</code>! Can you see why?</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;pthread.h&amp;gt;
+void* myfunc(void* ptr) {
+    int i = *((int *) ptr);
+    printf(&quot;%d &quot;, i);
+    return NULL;
+}
+
+int main() {
+    // Each thread gets a different value of i to process
+    int i;
+    pthread_t tid;
+    for(i =0; i &amp;lt; 10; i++) {
+        pthread_create(&amp;amp;tid, NULL, myfunc, &amp;amp;i); // ERROR
+    }
+    pthread_exit(NULL);
+}</code></pre>
+
+
+<p>The above code suffers from a <code>race condition</code> - the value of i is changing. The new threads start later (in the example output the last thread starts after the loop has finished).</p>
+<p>To overcome this race-condition, we will give each thread a pointer to it's own data area. For example, for each thread we may want to store the id, a starting value and an output value:</p>
+<pre class="highlight"><code class="language-C">struct T {
+  thread_t id;
+  int start;
+  char result[100];
+}</code></pre>
+
+
+<p>These can be stored in an array - </p>
+<pre class="highlight"><code>struct T *info = calloc(10 , sizeof(struct T)); // reserve enough bytes for ten T structures</code></pre>
+
+
+<p>And each array element passed to each thread - </p>
+<pre class="highlight"><code>pthread_create(&amp;amp;info[i].id, NULL, func, &amp;amp;info[i]);</code></pre>
+
+
+<h2>Why are some functions e.g.  asctime,getenv, strtok, strerror  not thread-safe?</h2>
+<p>To answer this, let's look at a simple function that is also not 'thread-safe'</p>
+<pre class="highlight"><code class="language-C">char *to_message(int num) {
+    char static result [256];
+    if (num &amp;lt; 10) sprintf(result, &quot;%d : blah blah&quot; , num);
+    else strcpy(result, &quot;Unknown&quot;);
+    return result;
+}</code></pre>
+
+
+<p>In the above code the result buffer is stored in global memory. This is good - we wouldn't want to return a pointer to an invalid address on the stack, but there's only one result buffer in the entire memory. If two threads were to use it at the same time then one would corrupt the other:</p>
+<table>
+<thead>
+<tr>
+<th>Time</th>
+<th>Thread 1</th>
+<th>Thread 2</th>
+<th>Comments</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>to_m(5 )</td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>2</td>
+<td></td>
+<td>to_m(99)</td>
+<td>Now both threads will see "Unknown" stored in the result buffer</td>
+</tr>
+</tbody>
+</table>
+<h2>What are condition variables, semaphores, mutexes?</h2>
+<p>These are synchronization locks that are used to prevent race conditions and ensure proper synchronization between threads running in the same program. In addition these locks are conceptually identical to the primitives used inside the kernel.</p>
+<h2>Are there any advantages of using threads over forking processes?</h2>
+<p>Yes! Sharing information between threads is easy because threads (of the same process) live inside the same virtual memory space.<br />
+Also, creating a thread is significantly faster than creating(forking) a process.</p>
+<h2>Are there any dis-advantages of using threads over forking processes?</h2>
+<p>Yes! No- isolation! As threads live inside the same process, one thread has access to the same virtual memory as the other threads. A single thread can terminate the entire process (e.g. by trying to read address zero).</p>
+<h2>Can you fork a process with multiple threads?</h2>
+<p>Yes! However the child process only has a single thread (which is a clone of the thread that called <code>fork</code>. We can see this as a simple example, where the background threads never print out a second message in the child process.</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;pthread.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;unistd.h&amp;gt;
+
+static pid_t child = -2;
+
+void *sleepnprint(void *arg) {
+  printf(&quot;%d:%s starting up...\n&quot;, getpid(), (char *) arg);
+
+  while (child == -2) {sleep(1);} /* Later we will use condition variables */
+
+  printf(&quot;%d:%s finishing...\n&quot;,getpid(), (char*)arg);
+
+  return NULL;  
+}
+int main() {
+  pthread_t tid1, tid2;
+  pthread_create(&amp;amp;tid1,NULL, sleepnprint, &quot;New Thread One&quot;);
+  pthread_create(&amp;amp;tid2,NULL, sleepnprint, &quot;New Thread Two&quot;);
+
+  child = fork();
+  printf(&quot;%d:%s\n&quot;,getpid(), &quot;fork()ing complete&quot;);
+  sleep(3);
+
+  printf(&quot;%d:%s\n&quot;,getpid(), &quot;Main thread finished&quot;);
+
+  pthread_exit(NULL);
+  return 0; /* Never executes */
+}</code></pre>
+
+
+<pre class="highlight"><code>8970:New Thread One starting up...
+8970:fork()ing complete
+8973:fork()ing complete
+8970:New Thread Two starting up...
+8970:New Thread Two finishing...
+8970:New Thread One finishing...
+8970:Main thread finished
+8973:Main thread finished</code></pre>
+
+
+<p>In practice creating threads before forking can lead to unexpected errors because (as demonstrated above) the other threads are immediately terminated when forking. Another thread might have just lock a mutex (e.g. by calling malloc) and never unlock it again. Advanced users may find <code>pthread_atfork</code> useful however we suggest you usually try to avoid creating threads before forking unless you fully understand the limitations and difficulties of this approach.</p>
+<h2>Are there other reasons where <code>fork</code> might be preferable to creating a thread.</h2>
+<p>Creating separate processes is useful <br />
+<em> When more security is desired (for example, Chrome browser uses different processes for different tabs)<br />
+</em> When running an existing and complete program then a new process is required (e.g. starting 'gcc')</p>
+<h2>How can I find out more?</h2>
+<p>See the complete example in the <a href="http://man7.org/linux/man-pages/man3/pthread_create.3.html">man page</a><br />
+And the <a href="http://man7.org/linux/man-pages/man7/pthreads.7.html">pthread reference guide</a><br />
+ALSO: <a href="http://www.thegeekstuff.com/2012/04/terminate-c-thread/">Concise third party sample code explaining create, join and exit</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

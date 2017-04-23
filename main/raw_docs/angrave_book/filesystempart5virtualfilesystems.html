@@ -1,0 +1,166 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 5: Virtual file systems</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 5: Virtual file systems</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 5: Virtual file systems
+            </div>
+            <h3>File System, Part 5: Virtual file systems</h3>
+
+<h2>Virtual file systems</h2>
+<p>POSIX systems, such as Linux and Mac OSX (which is based on BSD) include several virtual filesystems that are mounted (available) as part of the file-system. Files inside these virtual filesystems do not exist on the disk; they are generated dynamically by the kernel when a process requests a directory listing.<br />
+Linux provides 3 main virtual filesystems</p>
+<pre class="highlight"><code>/dev  - A list of physical and virtual devices (for example network card, cdrom, random number generator)
+/proc - A list of resources used by each process and (by tradition) set of system information
+/sys - An organized list of internal kernel entities</code></pre>
+
+
+<h2>How do I find out what filesystems are currently available (mounted)?</h2>
+<p>Use <code>mount</code><br />
+Using mount without any options generates a list (one filesystem per line) of mounted filesystems including networked, virtual and local (spinning disk / SSD-based) filesystems. Here is a typical output of mount</p>
+<pre class="highlight"><code>$ mount
+/dev/mapper/cs241--server_sys-root on / type ext4 (rw)
+proc on /proc type proc (rw)
+sysfs on /sys type sysfs (rw)
+devpts on /dev/pts type devpts (rw,gid=5,mode=620)
+tmpfs on /dev/shm type tmpfs (rw,rootcontext=&quot;system_u:object_r:tmpfs_t:s0&quot;)
+/dev/sda1 on /boot type ext3 (rw)
+/dev/mapper/cs241--server_sys-srv on /srv type ext4 (rw)
+/dev/mapper/cs241--server_sys-tmp on /tmp type ext4 (rw)
+/dev/mapper/cs241--server_sys-var on /var type ext4 (rw)rw,bind)
+/srv/software/Mathematica-8.0 on /software/Mathematica-8.0 type none (rw,bind)
+engr-ews-homes.engr.illinois.edu:/fs1-homes/angrave/linux on /home/angrave type nfs (rw,soft,intr,tcp,noacl,acregmin=30,vers=3,sec=sys,sloppy,addr=128.174.252.102)</code></pre>
+
+
+<p>Notice that each line includes the filesystem type source of the filesystem and mount point.<br />
+To reduce this output we can pipe it into <code>grep</code> and only see lines that match a regular expression. </p>
+<pre class="highlight"><code>&amp;gt;mount | grep proc  # only see lines that contain 'proc'
+proc on /proc type proc (rw)
+none on /proc/sys/fs/binfmt_misc type binfmt_misc (rw)</code></pre>
+
+
+<h2>Todo</h2>
+<pre class="highlight"><code>$ sudo mount /dev/cdrom /media/cdrom
+$ mount
+$ mount | grep proc</code></pre>
+
+
+<p>Examples of virtual files in /proc:</p>
+<pre class="highlight"><code>$ cat /proc/sys/kernel/random/entropy_avail
+$ hexdump /dev/random
+$ hexdump /dev/urandom</code></pre>
+
+
+<h2>Differences between random and urandom?</h2>
+<p>/dev/random is a file which contains pseudorandom number generator where the entropy is determined from environmental noise. Random will block/wait until enough entropy is collected from the environment. </p>
+<p>/dev/urandom is like random, but differs in the fact that it allows for repetition (lower entropy threshold), thus wont block.</p>
+<pre class="highlight"><code>$ cat /proc/meminfo
+$ cat /proc/cpuinfo
+$ cat /proc/cpuinfo | grep bogomips
+
+$ cat /proc/meminfo | grep Swap
+
+$ cd /proc/self
+$ echo $$; cd /proc/12345; cat maps</code></pre>
+
+
+<h2>How do I mount a disk image?</h2>
+<p>Suppose you had downloaded a bootable linux disk image...</p>
+<pre class="highlight"><code>wget http://cosmos.cites.illinois.edu/pub/archlinux/iso/2015.04.01/archlinux-2015.04.01-dual.iso</code></pre>
+
+
+<p>Before putting the filesystem on a CD, we can mount the file as a filesystem and explore its contents. Note, mount requires root access, so let's run it using sudo</p>
+<pre class="highlight"><code>$ mkdir arch
+$ sudo mount -o loop archlinux-2015.04.01-dual.iso ./arch
+$ cd arch</code></pre>
+
+
+<p>Before the mount command, the arch directory is new and obviously empty. After mounting, the contents of <code>arch/</code> will be drawn from the files and directories stored in the filesystem stored inside the <code>archlinux-2014.11.01-dual.iso</code> file.<br />
+The <code>loop</code> option is required because we want to mount a regular file not a block device such as a physical disk. </p>
+<p>The loop option wraps the original file as a block device - in this example we will find out below that the file system is provided under <code>/dev/loop0</code> : We can check the filesystem type and mount options by running the mount command without any parameters. We will pipe the output into <code>grep</code> so that we only see the relevant output line(s) that contain 'arch'</p>
+<pre class="highlight"><code>$ mount | grep arch
+/home/demo/archlinux-2014.11.01-dual.iso on /home/demo/arch type iso9660 (rw,loop=/dev/loop0)</code></pre>
+
+
+<p>The iso9660 filesystem is a read-only filesystem originally designed for optical storage media (i.e. CDRoms). Attempting to change the contents of the filesystem will fail</p>
+<pre class="highlight"><code>$ touch arch/nocando
+touch: cannot touch `/home/demo/arch/nocando': Read-only file system</code></pre>
+
+
+<p><a href="https://github.com/angrave/SystemProgramming/wiki/File-System,-Part-6:-Memory-mapped-files-and-Shared-memory">Go to File System: Part 6</a></p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

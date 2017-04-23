@@ -1,0 +1,165 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Synchronization, Part 6: Implementing a barrier</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Synchronization, Part 6: Implementing a barrier</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Synchronization, Part 6: Implementing a barrier
+            </div>
+            <h3>Synchronization, Part 6: Implementing a barrier</h3>
+
+<h2>How do I wait for N threads to reach a certain point before continuing onto the next step?</h2>
+<p>Suppose we wanted to perform a multi-threaded calculation that has two stages but we don't want to advance to the second stage until the first stage is completed.</p>
+<p>We could use a synchronization method called a <strong>barrier</strong>. When a thread reaches a barrier, it will wait at the barrier until all the threads reach the barrier, and then they'll all proceed together.  </p>
+<p>Think of it like being out for a hike with some friends.  You agree to wait for each other at the top of each hill (and you make a mental note how many are in your group). Say you're the first one to reach the top of the first hill. You'll wait there at the top for your friends. One by one, they'll arrive at the top, but nobody will continue until the last person in your group arrives.  Once they do, you'll all proceed.</p>
+<p>Pthreads has a function <code>pthread_barrier_wait()</code> that implements this. You'll need to declare a <code>pthread_barrier_t</code> variable and initialize it with <code>pthread_barrier_init()</code>.  <code>pthread_barrier_init()</code> takes the number of threads that will be participating in the barrier as an argument.  <a href="https://github.com/angrave/SystemProgramming/wiki/Sample-program-using-pthread-barriers">Here's an example.</a></p>
+<p>Now let's implement our own barrier and use it to keep all the threads in sync in a large calculation.</p>
+<pre class="highlight"><code class="language-C">double data[256][8192]
+
+1 Threads do first calculation (use and change values in data)
+
+2 Barrier! Wait for all threads to finish first calculation before continuing
+
+3 Threads do second calculation (use and change values in data)</code></pre>
+
+
+<p>The thread function has four main parts-</p>
+<pre class="highlight"><code class="language-C">void *calc(void *arg) {
+  /* Do my part of the first calculation */
+  /* Am I the last thread to finish? If so wake up all the other threads! */
+  /* Otherwise wait until the other threads has finished part one */
+  /* Do my part of the second calculation */
+}</code></pre>
+
+
+<p>Our main thread will create the 16 threads and we will divide each calculation into 16 separate pieces.  Each thread will be given a unique value (0,1,2,..15), so it can work on its own block.<br />
+Since a (void*) type can hold small integers, we will pass the value of <code>i</code> by casting it to a void pointer. </p>
+<pre class="highlight"><code class="language-C">#define N (16)
+double data[256][8192] ;
+int main() {
+    pthread_t ids[N];
+    for(int i = 0; i &amp;lt; N; i++)  
+        pthread_create(&amp;amp;ids[i], NULL, calc, (void *) i);</code></pre>
+
+
+<p>Note, we will never dereference this pointer value as an actual memory location - we will just cast it straight back to an integer:</p>
+<pre class="highlight"><code class="language-C">void *calc(void *ptr) {
+// Thread 0 will work on rows 0..15, thread 1 on rows 16..31
+  int x, y, start = N * (int) ptr;
+  int end = start + N; 
+  for(x = start; x &amp;lt; end; x++) for (y = 0; y &amp;lt; 8192; y++) { /* do calc #1 */ }</code></pre>
+
+
+<p>After calculation 1 completes we need to wait for the slower threads (unless we are the last thread!).<br />
+So keep track of the number of threads that have arrived at our barrier aka 'checkpoint':</p>
+<pre class="highlight"><code class="language-C">// Global: 
+int remain = N;
+
+
+// After calc #1 code:
+remain--; // We finished
+if (remain ==0) {/*I'm last!  -  Time for everyone to wake up! */ }
+else {
+  while (remain != 0) { /* spin spin spin*/ }
+}</code></pre>
+
+
+<p>However the above code has a race condition (two threads might try to decrement <code>remain</code>) and the loop is a busy loop. We can do better! Let's use a condition variable and then we will use a broadcast/signal functions to wake up the sleeping threads.</p>
+<p>A reminder, that a condition variable is similar to a house! Threads go there to sleep (<code>pthread_cond_wait</code>). You can choose to wake up one thread (<code>pthread_cond_signal</code>) or all of them (<code>pthread_cond_broadcast</code>).  If there are no threads currently waiting then these two calls have no effect.</p>
+<p>A condition variable version is usually very similar to a busy loop incorrect solution - as we will show next. First, let's add a mutex and condition global variables and don't forget to initialize them in <code>main</code> ...</p>
+<pre class="highlight"><code class="language-C">//global variables
+pthread_mutex_t m;
+pthread_cond_t cv;
+
+main() {
+  pthread_mutex_init(&amp;amp;m, NULL);
+  pthread_cond_init(&amp;amp;cv, NULL);</code></pre>
+
+
+<p>We will use the mutex to ensure that only one thread modifies <code>remain</code> at a time.<br />
+The last arriving thread needs to wake up <em>all</em> sleeping threads - so we will use <code>pthread_cond_broadcast(&amp;amp;cv)</code> not <code>pthread_cond_signal</code></p>
+<pre class="highlight"><code class="language-C">pthread_mutex_lock(&amp;amp;m);
+remain--; 
+if (remain ==0) { pthread_cond_broadcast(&amp;amp;cv); }
+else {
+  while(remain != 0) { pthread_cond_wait(&amp;amp;cv, &amp;amp;m) }
+}
+pthread_mutex_unlock(&amp;amp;m);</code></pre>
+
+
+<p>When a thread enters <code>pthread_cond_wait</code> it releases the mutex and sleeps. At some point in the future it will be awoken. Once we bring a thread back from its sleep, before returning it must wait until it can lock the mutex. Notice that even if a sleeping thread wakes up early, it will check the while loop condition and re-enter wait if necessary.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

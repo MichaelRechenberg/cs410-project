@@ -1,0 +1,174 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Process Control, Part 1: Wait macros, using signals</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Process Control, Part 1: Wait macros, using signals</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Process Control, Part 1: Wait macros, using signals
+            </div>
+            <h3>Process Control, Part 1: Wait macros, using signals</h3>
+
+<h2>Can I find out the exit value of my child?</h2>
+<p>You can find the lowest 8 bits of the child's exit value (the return value of <code>main()</code> or value included in <code>exit()</code>): Use the "Wait macros" - typically you will use "WIFEXITED" and "WEXITSTATUS" . See <code>wait</code>/<code>waitpid</code> man page for more information).</p>
+<pre class="highlight"><code class="language-C">int status;
+pid_t child = fork();
+if (child == -1) return 1; //Failed
+if (child &amp;gt; 0) { /* I am the parent - wait for the child to finish */
+  pid_t pid = waitpid(child, &amp;amp;status, 0);
+  if (pid != -1 &amp;amp;&amp;amp; WIFEXITED(status)) {
+     int low8bits = WEXITSTATUS(status);
+     printf(&quot;Process %d returned %d&quot; , pid, low8bits);
+  }
+} else { /* I am the child */
+ // do something interesting
+  execl(&quot;/bin/ls&quot;, &quot;/bin/ls&quot;, &quot;.&quot;, (char *) NULL); // &quot;ls .&quot;
+}</code></pre>
+
+
+<h2>Can I pause my child?</h2>
+<p>Yes ! You can temporarily pause a running process by sending it a SIGSTOP signal.<br />
+If it succeeds it will freeze a process; i.e. the process will not be allocated anymore CPU time.</p>
+<p>To allow a process to resume execution send it the SIGCONT signal.</p>
+<p>For example,<br />
+Here's program that slowly prints a dot every second, up to 59 dots.</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+int main() {
+  printf(&quot;My pid is %d\n&quot;, getpid() );
+  int i = 60;
+  while(--i) { 
+    write(1, &quot;.&quot;,1);
+    sleep(1);
+  }
+  write(1, &quot;Done!&quot;,5);
+  return 0;
+}</code></pre>
+
+
+<p>We will first start the process in the background (notice the &amp; at the end).<br />
+Then send it a signal from the shell process by using the kill command.</p>
+<pre class="highlight"><code>&amp;gt;./program &amp;amp;
+My pid is 403
+...
+&amp;gt;kill -SIGSTOP 403
+&amp;gt;kill -SIGCONT 403</code></pre>
+
+
+<h2>How do I kill/stop/suspend my child from C?</h2>
+<p>In C, send a signal to the child using <code>kill</code> POSIX call,</p>
+<pre class="highlight"><code class="language-C">kill(child, SIGUSR1); // Send a user-defined signal
+kill(child, SIGSTOP); // Stop the child process (the child cannot prevent this)
+kill(child, SIGTERM); // Terminate the child process (the child cannot prevent this)
+kill(child, SIGINT); // Equivalent to CTRL-C (by default closes the process)</code></pre>
+
+
+<p>As we saw above there is also a kill command available in the shell<br />
+e.g. get a list of running processes and then terminate process 45 and process 46</p>
+<pre class="highlight"><code>ps
+kill -l 
+kill -9 45
+kill -s TERM 46</code></pre>
+
+
+<h2>How can I detect "CTRL-C" and clean up gracefully?</h2>
+<p>We will return to signals later on - this is just a short introduction. On a Linux system, see <code>man -s7 signal</code> if you are interested in finding out more (for example a list of system and library calls that are async-signal-safe.</p>
+<p>There are strict limitations on the executable code inside a signal handler. Most library and system calls are not 'async-signal-safe' - they may be not use used inside a signal handler because they are not re-entrant safe. In a single-threaded program, signal handling momentarily interrupts the program execution to execute the signal handler code instead. Suppose your original program was interrupted while executing the library code of <code>malloc</code> ;  the memory structures used by malloc will not be in a consistent state. Calling <code>printf</code> (which uses <code>malloc</code>) as part of the signal handler is unsafe and will result in "undefined behavior" i.e. it is no longer a useful,predictable program. In practice your program might crash, compute or generate incorrect results or stop functioning ("deadlock"), depending on exactly what your program was executing when it was interrupted to execute the signal handler code.</p>
+<p>One common use of signal handlers is to set a boolean flag that is occasionally polled (read) as part of the normal running of the program. For example,</p>
+<pre class="highlight"><code class="language-C">int pleaseStop ; // See notes on why &quot;volatile sig_atomic_t&quot; is better
+
+void handle_sigint(int signal) {
+  pleaseStop = 1;
+}
+
+int main() {
+  signal(SIGINT, handle_sigint);
+  pleaseStop = 0;
+  while ( ! pleaseStop) { 
+     /* application logic here */ 
+   }
+  /* cleanup code here */
+}</code></pre>
+
+
+<p>The above code might appear to be correct on paper. However, we need to provide a hint to the compiler and to the CPU core that will execute the <code>main()</code> loop. We need to prevent a compiler optimization: The expression <code>! pleaseStop</code> appears to be a loop invariant i.e. true forever, so can be simplified to <code>true</code>.  Secondly, we need to ensure that the value of <code>pleaseStop</code> is not cached using a CPU register and instead always read from and written to main memory. The <code>sig_atomic_t</code> type implies that all the bits of the variable can be read or modified as an "atomic operation" - a single uninterruptable operation. It is impossible to read a value that is composed of some new bit values and old bit values.</p>
+<p>By specifying <code>pleaseStop</code> with the correct type <code>volatile sig_atomic_t</code> we can write portable code where the main loop will be exited after the signal handler returns. The <code>sig_atomic_t</code> type can be as large as an <code>int</code> on most modern platforms but on embedded systems can be as small as a <code>char</code> and only able to represent (-127 to 127) values.</p>
+<pre class="highlight"><code class="language-C">volatile sig_atomic_t pleaseStop;</code></pre>
+
+
+<p>Two examples of this pattern can be found in "COMP" a terminal based 1Hz 4bit computer (<a href="https://github.com/gto76/comp-cpp/blob/1bf9a77eaf8f57f7358a316e5bbada97f2dc8987/src/output.c#L121">https://github.com/gto76/comp-cpp/blob/1bf9a77eaf8f57f7358a316e5bbada97f2dc8987/src/output.c#L121</a>).<br />
+Two boolean flags are used. One to mark the delivery of <code>SIGINT</code> (CTRL-C), and gracefully shutdown the program, and the other to mark <code>SIGWINCH</code> signal to detect terminal resize and redraw the entire display. </p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

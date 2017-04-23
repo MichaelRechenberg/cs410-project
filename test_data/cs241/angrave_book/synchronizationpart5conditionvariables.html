@@ -1,0 +1,257 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Synchronization, Part 5: Condition Variables</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Synchronization, Part 5: Condition Variables</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Synchronization, Part 5: Condition Variables
+            </div>
+            <h3>Synchronization, Part 5: Condition Variables</h3>
+
+<h2>Warm up</h2>
+<p>Name these properties!<br />
+<em> "Only one process(/thread) can be in the CS at a time"<br />
+</em> "If waiting, then another process can only enter the CS a finite number of times" <br />
+* "If no other process is in the CS then the process can immediately enter the CS"</p>
+<p>See [[Synchronization, Part 4: The Critical Section Problem]] for answers.</p>
+<h2>What is the 'exchange instruction' ?</h2>
+<p>The exchange instruction ('XCHG') is an atomic CPU instruction that exchanges the contents of a register with a memory location. This can be used as a basis to implement a simple mutex lock.</p>
+<pre class="highlight"><code class="language-C">// *Pseudo-C-code* for a simple busy-waiting mutex 
+// that uses an atomic exchange function
+int lock = 0; // initialization
+
+// To enter the critical section you need to read a lock value of zero. 
+// 'xchg' function doesn't exist, but imagine this function is built on the atomic XCHG CPU function
+// i.e. it writes '1' into the lock variable and returns the previous contents of the memory
+while (xchg( 1, &amp;amp;lock)) {/*spin spin spin*/}
+/* Do Critical Section stuff*/
+lock = 0;</code></pre>
+
+
+<h2>What are condition variables? How do you use them? What is Spurious Wakeup?</h2>
+<ul>
+<li>
+<p>Condition variables allow a set of threads to sleep until tickled! You can tickle one thread or all threads that are sleeping. If you only wake one thread then the operating system will decide which thread to wake up. You don't wake threads directly instead you 'signal' the condition variable, which then will wake up one (or all) threads that are sleeping inside the condition variable.</p>
+</li>
+<li>
+<p>Condition variables are used with a mutex and with a loop (to check a condition).</p>
+</li>
+<li>
+<p>Occasionally a waiting thread may appear to wake up for no reason (this is called a <em>spurious wake</em>)! This is not an issue because you always use <code>wait</code> inside a loop that tests a condition that must be true to continue.</p>
+</li>
+<li>
+<p>Threads sleeping inside a condition variable are woken up calling <code>pthread_cond_broadcast</code> (wake up all) or <code>pthread_cond_signal</code> (wake up one). Note despite the function name, this has nothing to do with POSIX <code>signal</code>s!</p>
+</li>
+</ul>
+<h2>What does <code>pthread_cond_wait</code> do?</h2>
+<p>The call <code>pthread_cond_wait</code> performs three actions:<br />
+<em> unlock the mutex and atomically...<br />
+</em> waits (sleeps until <code>pthread_cond_signal</code> is called on the same condition variable)<br />
+* Before returning, locks the mutex</p>
+<h2>(Advanced topic) Why do Condition Variables also need a mutex?</h2>
+<p>Condition variables need a mutex for three reasons. The simplest to understand is that it prevents an early wakeup message (<code>signal</code> or <code>broadcast</code> functions) from being 'lost.' Imagine the following sequence of events (time runs down the page) where the condition is satisfied <em>just before </em><code>pthread_cond_wait</code> is called. In this example the wake-up signal is lost!</p>
+<table>
+<thead>
+<tr>
+<th>Thread 1</th>
+<th>Thread 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>while( answer &amp;lt; 42) {</code></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td><code>answer++</code></td>
+</tr>
+<tr>
+<td></td>
+<td><code>p_cond_signal(cv)</code></td>
+</tr>
+<tr>
+<td><code>p_cond_wait(cv,m)</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>If both threads had locked a mutex, the signal can not be sent until <em>after</em> <code>pthread_cond_wait(cv, m)</code> is called (which then internally unlocks the mutex)</p>
+<p>A second common reason is that updating the program state (<code>answer</code> variable) typically requires mutual exclusion - for example multiple threads may be updating the value of <code>answer</code>.</p>
+<p>A third and subtle reason is to satisfy real-time scheduling concerns which we only outline here: In a time-critical application, the waiting thread with the <em>highest priority</em> should be allowed to continue first. To satisfy this requirement the mutex must also be locked before calling <code>pthread_cond_signal</code> or <code>pthread_cond_broadcast</code> . For the curious, a longer and historical discussion is <a href="https://groups.google.com/forum/?hl=ky#!msg/comp.programming.threads/wEUgPq541v8/ZByyyS8acqMJ">here</a>.</p>
+<h2>Why do spurious wakes exist?</h2>
+<p>For performance. On multi-CPU systems it is possible that a race-condition could cause a wake-up (signal) request to be unnoticed. The kernel may not detect this lost wake-up call but can detect when it might occur. To avoid the potential lost signal the thread is woken up so that the program code can test the condition again.</p>
+<h2>Example</h2>
+<p>Condition variables are <em>always</em> used with a mutex lock.</p>
+<p>Before calling <em>wait</em>, the mutex lock must be locked and <em>wait</em> must be wrapped with a loop.</p>
+<pre class="highlight"><code class="language-C">pthread_cond_t cv;
+pthread_mutex_t m;
+int count;
+
+// Initialize
+pthread_cond_init(&amp;amp;cv, NULL);
+pthread_mutex_init(&amp;amp;m, NULL);
+count = 0;
+
+pthread_mutex_lock(&amp;amp;m);
+while (count &amp;lt; 10) {
+   pthread_cond_wait(&amp;amp;cv, &amp;amp;m); 
+/* Remember that cond_wait unlocks the mutex before blocking (waiting)! */
+/* After unlocking, other threads can claim the mutex. */
+/* When this thread is later woken it will */
+/* re-lock the mutex before returning */
+}
+pthread_mutex_unlock(&amp;amp;m);
+
+//later clean up with pthread_cond_destroy(&amp;amp;cv); and mutex_destroy 
+
+
+// In another thread increment count:
+while (1) {
+  pthread_mutex_lock(&amp;amp;m);
+  count++;
+  pthread_cond_signal(&amp;amp;cv);
+  /* Even though the other thread is woken up it cannot not return */
+  /* from pthread_cond_wait until we have unlocked the mutex. This is */
+  /* a good thing! In fact, it is usually the best practice to call */
+  /* cond_signal or cond_broadcast before unlocking the mutex */
+  pthread_mutex_unlock(&amp;amp;m);
+}</code></pre>
+
+
+<h2>Implementing counting semaphores</h2>
+<ul>
+<li>We can implement a counting semaphore using condition variables.</li>
+<li>Each semaphore needs a count, a condition variable and a mutex</li>
+</ul>
+<pre class="highlight"><code class="language-C">typedef struct sem_t {
+  int count; 
+  pthread_mutex_t m;
+  pthread_condition_t cv;
+} sem_t;</code></pre>
+
+
+<p>Implement <code>sem_init</code> to initialize the mutex and condition variable</p>
+<pre class="highlight"><code class="language-C">int sem_init(sem_t *s, int pshared, int value) {
+  if (pshared) { errno = ENOSYS /* 'Not implemented'*/; return -1;}
+
+  s-&amp;gt;count = value;
+  pthread_mutex_init(&amp;amp;s-&amp;gt;m, NULL);
+  pthread_cond_init(&amp;amp;s-&amp;gt;cv, NULL);
+  return 0;
+}</code></pre>
+
+
+<p>Our implementation of <code>sem_post</code> needs to increment the count.<br />
+We will also wake up any threads sleeping inside the condition variable.<br />
+Notice we lock and unlock the mutex so only one thread can be inside the critical section at a time.</p>
+<pre class="highlight"><code class="language-C">sem_post(sem_t *s) {
+  pthread_mutex_lock(&amp;amp;s-&amp;gt;m);
+  s-&amp;gt;count++;
+  pthread_cond_signal(s-&amp;gt;cv); /* See note */
+  /* A woken thread must acquire the lock, so it will also have to wait until we call unlock*/
+
+  pthread_mutex_unlock(&amp;amp;s-&amp;gt;m);
+}</code></pre>
+
+
+<p>Our implementation of <code>sem_wait</code> may need to sleep if the semaphore's count is zero.<br />
+Just like <code>sem_post</code> we wrap the critical section using the lock (so only one thread can be executing our code at a time). Notice if the thread does need to wait then the mutex will be unlocked, allowing another thread to enter <code>sem_post</code> and waken us from our sleep!</p>
+<p>Notice that even if a thread is woken up, before it returns from  <code>pthread_cond_wait</code> it must re-acquire the lock, so it will have to wait a little bit more (e.g. until sem_post finishes). </p>
+<pre class="highlight"><code class="language-C">sem_wait(sem_t *s) {
+  pthread_mutex_lock(&amp;amp;s-&amp;gt;m);
+  while (s-&amp;gt;count == 0) {
+      pthread_cond_wait(&amp;amp;s-&amp;gt;cv, &amp;amp;s-&amp;gt;m); /*unlock mutex, wait, relock mutex*/
+  }
+  s-&amp;gt;count--;
+  pthread_mutex_unlock(&amp;amp;s-&amp;gt;m);
+}</code></pre>
+
+
+<p>Wait <code>sem_post</code> keeps calling <code>pthread_cond_signal</code> won't that break sem_wait? <br />
+Answer: No! We can't get past the loop until the count is non-zero. In practice this means <code>sem_post</code> would unnecessary call <code>pthread_cond_signal</code> even if there are no waiting threads. A more efficient implementation would only call <code>pthread_cond_signal</code> when necessary i.e.</p>
+<pre class="highlight"><code class="language-C">  /* Did we increment from zero to one- time to signal a thread sleeping inside sem_post */
+  if (s-&amp;gt;count == 1) /* Wake up one waiting thread!*/
+     pthread_cond_signal(&amp;amp;s-&amp;gt;cv);</code></pre>
+
+
+<h2>Other semaphore considerations</h2>
+<ul>
+<li>Real semaphores implementation include a queue and scheduling concerns to ensure fairness and priority e.g. wake up the highest-priority longest sleeping thread.</li>
+<li>Also, an advanced use of <code>sem_init</code> allows semaphores to be shared across processes. Our implementation only works for threads inside the same process.</li>
+</ul>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

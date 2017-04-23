@@ -1,0 +1,158 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signals, Part 4: Sigaction</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Signals, Part 4: Sigaction</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Signals, Part 4: Sigaction
+            </div>
+            <h3>Signals, Part 4: Sigaction</h3>
+
+<h2>How and why do I use <code>sigaction</code> ?</h2>
+<p>To change the "signal disposition" of a process - i.e. what happens when a signal is delivered to your process - use <code>sigaction</code></p>
+<p>You can use system call <code>sigaction</code> to set the current handler for a signal or read the current signal handler for a particular signal.</p>
+<pre class="highlight"><code class="language-C">int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact);</code></pre>
+
+
+<p>The sigaction struct includes two callback functions (we will only look at the 'handler' version), a signal mask and a flags field -</p>
+<pre class="highlight"><code class="language-C">struct sigaction {
+               void     (*sa_handler)(int);
+               void     (*sa_sigaction)(int, siginfo_t *, void *);
+               sigset_t   sa_mask;
+               int        sa_flags;
+}; </code></pre>
+
+
+<h2>How do I convert a <code>signal</code> call into the equivalent <code>sigaction</code> call?</h2>
+<p>Suppose you installed a signal handler for the alarm signal,</p>
+<pre class="highlight"><code class="language-C">signal(SIGALRM, myhandler);</code></pre>
+
+
+<p>The equivalent <code>sigaction</code> code is:</p>
+<pre class="highlight"><code class="language-C">struct sigaction sa; 
+sa.sa_handler = myhandler;
+sigemptyset(&amp;amp;sa.sa_mask);
+sa.sa_flags = 0; 
+sigaction(SIGALRM, &amp;amp;sa, NULL)</code></pre>
+
+
+<p>However, we typically may also set the mask and the flags field. The mask is a temporary signal mask used during the signal handler execution. The SA_RESTART flag will automatically restart some (but not all) system calls that otherwise would have returned early (with EINTR error). The latter means we can simplify the rest of code somewhat because a restart loop may no longer be required.</p>
+<pre class="highlight"><code class="language-C">sigfillset(&amp;amp;sa.sa_mask);
+sa.sa_flags = SA_RESTART; /* Restart functions if  interrupted by handler */     </code></pre>
+
+
+<h2>How do I use sigwait?</h2>
+<p>Sigwait can be used to read one pending signal at a time. <code>sigwait</code> is used to synchronously wait for signals, rather than handle them in a callback. A typical use of sigwait in a multi-threaded program is shown below. Notice that the thread signal mask is set first (and will be inherited by new threads). This prevents signals from being <em>delivered</em> so they will remain in a pending state until sigwait is called. Also notice the same set sig_t variable is used by sigwait - except rather than setting the set of blocked signals it is being used as the set of signals that sigwait can catch and return.</p>
+<p>One advantage of writing a custom signal handling thread (such as the example below) rather than a callback function is that you can now use many more C library and system functions that otherwise could not be safely used in a signal handler because they are not async signal-safe.</p>
+<p>Based on <code>http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_sigmask.html</code></p>
+<pre class="highlight"><code class="language-C">static sigset_t   signal_mask;  /* signals to block         */
+
+int main (int argc, char *argv[])
+{
+    pthread_t sig_thr_id;      /* signal handler thread ID */
+    sigemptyset (&amp;amp;signal_mask);
+    sigaddset (&amp;amp;signal_mask, SIGINT);
+    sigaddset (&amp;amp;signal_mask, SIGTERM);
+    pthread_sigmask (SIG_BLOCK, &amp;amp;signal_mask, NULL);
+
+    /* New threads will inherit this thread's mask */
+    pthread_create (&amp;amp;sig_thr_id, NULL, signal_thread, NULL);
+
+    /* APPLICATION CODE */
+    ...
+}
+
+void *signal_thread (void *arg)
+{
+    int       sig_caught;    /* signal caught       */
+
+    /* Use same mask as the set of signals that we'd like to know about! */
+    sigwait(&amp;amp;signal_mask, &amp;amp;sig_caught);
+    switch (sig_caught)
+    {
+    case SIGINT:     /* process SIGINT  */
+        ...
+        break;
+    case SIGTERM:    /* process SIGTERM */
+        ...
+        break;
+    default:         /* should normally not happen */
+        fprintf (stderr, &quot;\nUnexpected signal %d\n&quot;, sig_caught);
+        break;
+    }
+}</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

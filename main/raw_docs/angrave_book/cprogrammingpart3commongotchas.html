@@ -1,0 +1,269 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>C Programming, Part 3: Common Gotchas</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">C Programming, Part 3: Common Gotchas</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; C Programming, Part 3: Common Gotchas
+            </div>
+            <h3>C Programming, Part 3: Common Gotchas</h3>
+
+<p>What common mistakes do C programmers make?</p>
+<h1>Memory mistakes</h1>
+<h2>String constants are constant</h2>
+<pre class="highlight"><code class="language-C">char array[] = &quot;Hi!&quot;; // array contains a mutable copy 
+strcpy(array, &quot;OK&quot;);
+
+char *ptr = &quot;Can't change me&quot;; // ptr points to some immutable memory
+strcpy(ptr, &quot;Will not work&quot;);</code></pre>
+
+
+<p>String literals are character arrays stored in static memory, which is immutable. Two string literals may share the same space in memory. An example follows:</p>
+<pre class="highlight"><code class="language-C">char * str1 = &quot;Brandon Chong is the best TA&quot;;
+char * str2 = &quot;Brandon Chong is the best TA&quot;;</code></pre>
+
+
+<p>The strings pointed to by <code>str1</code> and <code>str2</code> may actually reside in the same location in memory.</p>
+<p>Char arrays, however, put that string literal in static memory, <em>and then copy it over to stack memory</em>. These following char arrays do not reside in the same place in memory.</p>
+<pre class="highlight"><code class="language-C">char arr1[] = &quot;Brandon Chong didn't write this&quot;;
+char arr2[] = &quot;Brandon Chong didn't write this&quot;;</code></pre>
+
+
+<h2>Buffer overflow/ underflow</h2>
+<pre class="highlight"><code class="language-C">#define N (10)
+int i = N, array[N];
+for( ; i &amp;gt;= 0; i--) array[i] = i;</code></pre>
+
+
+<p>C does not check that pointers are valid. The above example writes into <code>array[10]</code> which is outside the array bounds. This can cause memory corruption because that memory location is probably being used for something else.<br />
+In practice, this can be harder to spot because the overflow/underflow may occur in a library call e.g.</p>
+<pre class="highlight"><code class="language-C">gets(array); // Let's hope the input is shorter than my array!</code></pre>
+
+
+<h2>Returning pointers to automatic variables</h2>
+<pre class="highlight"><code class="language-C">int *f() {
+    int result = 42;
+    static int imok;
+    return &amp;amp;imok; // OK - static variables are not on the stack
+    return &amp;amp;result; // Not OK
+}</code></pre>
+
+
+<p>Automatic variables are bound to stack memory only for the lifetime of the function.<br />
+After the function returns it is an error to continue to use the memory.</p>
+<h2>Insufficient memory allocation</h2>
+<pre class="highlight"><code class="language-C">struct User {
+   char name[100];
+};
+typedef struct User user_t;
+
+user_t *user = (user_t *) malloc(sizeof(user));</code></pre>
+
+
+<p>In the above example, we needed to allocate enough bytes for the struct. Instead we allocated enough bytes to hold a pointer. Once we start using the user pointer we will corrupt memory. Correct code is show below.</p>
+<pre class="highlight"><code class="language-C">struct User {
+   char name[100];
+};
+typedef struct User user_t;
+
+user_t * user = (user_t *) malloc(sizeof(user_t));</code></pre>
+
+
+<h4>Strings require <code>strlen(s)+1</code> bytes</h4>
+<p>Every string must have a null byte after the last characters. To store the string &lt;code&gt;"Hi"&lt;/code&gt; it takes 3 bytes: &lt;code&gt;[H] [i] [\0]&lt;/code&gt;.</p>
+<pre class="highlight"><code class="language-C">  char *strdup(const char *s) {  /* return a copy of 'input' */
+    char *copy;
+    copy = malloc(sizeof(char*));     /* nope! this allocates space for a pointer, not a string */
+    copy = malloc(strlen(input));     /* Almost...but what about the null terminator? */
+    copy = malloc(strlen(input) + 1); /* That's right. */
+    strcpy(copy, input);   /* strcpy will provide the null terminator */
+    return copy;
+}</code></pre>
+
+
+<h2>Using uninitialized variables</h2>
+<pre class="highlight"><code class="language-C">int myfunction() {
+  int x;
+  int y = x + 2;
+...</code></pre>
+
+
+<p>Automatic variables hold garbage (whatever bit pattern happened to be in memory). It is an error to assume that it will always be initialized to zero.</p>
+<h2>Assuming Uninitialized memory will be zeroed</h2>
+<pre class="highlight"><code class="language-C">void myfunct() {
+   char array[10];
+   char *p = malloc(10);</code></pre>
+
+
+<p>Automatic (temporary variables) are not automatically initialized to zero.<br />
+Heap allocations using malloc are not automatically initialized to zero.</p>
+<h2>Double-free</h2>
+<pre class="highlight"><code class="language-C">  char *p = malloc(10);
+  free(p);
+//  .. later ...
+  free(p); </code></pre>
+
+
+<p>It is an error to free the same block of memory twice.</p>
+<h2>Dangling pointers</h2>
+<pre class="highlight"><code class="language-C">  char *p = malloc(10);
+  strcpy(p, &quot;Hello&quot;);
+  free(p);
+//  .. later ...
+  strcpy(p,&quot;World&quot;); </code></pre>
+
+
+<p>Pointers to freed memory should not be used. A defensive programming practice is to set pointers to null as soon as the memory is freed.</p>
+<p>It is a good idea to turn free into the following snippet that automatically sets the freed variable to null right after:(vim - ultisnips)  </p>
+<pre class="highlight"><code class="language-Vim">snippet free &quot;free(something)&quot; b
+free(${1});
+$1 = NULL;
+${2}
+endsnippet</code></pre>
+
+
+<h1>Logic and Program flow mistakes</h1>
+<h2>Forgetting break</h2>
+<pre class="highlight"><code class="language-C">int flag = 1; // Will print all three lines.
+switch(flag) {
+  case 1: printf(&quot;I'm printed\n&quot;);
+  case 2: printf(&quot;Me too\n&quot;);
+  case 3: printf(&quot;Me three\n&quot;);
+}</code></pre>
+
+
+<p>Case statements without a break will just continue onto the code of the next case statement. Correct code is show bellow. The break for the last statements is unnecessary because there are no more cases to be executed after the last one. However if more are added, it can cause some bugs.</p>
+<pre class="highlight"><code class="language-C">int flag = 1; // Will print all three lines.
+switch(flag) {
+  case 1: 
+    printf(&quot;I'm printed\n&quot;);
+    break;
+  case 2: 
+    printf(&quot;Me too\n&quot;);
+    break;
+  case 3: 
+    printf(&quot;Me three\n&quot;);
+    break; //unnecessary
+}</code></pre>
+
+
+<h2>Equal vs. equality</h2>
+<pre class="highlight"><code class="language-C">int answer = 3; // Will print out the answer.
+if (answer = 42) { printf(&quot;I've solved the answer! It's %d&quot;, answer);}</code></pre>
+
+
+<h2>Undeclared or incorrectly prototyped functions</h2>
+<pre class="highlight"><code class="language-C">time_t start = time();</code></pre>
+
+
+<p>The system function 'time' actually takes a parameter (a pointer to some memory that can receive the time_t structure). The compiler did not catch this error because the programmer did not provide a valid function prototype by including <code>time.h</code></p>
+<h2>Extra Semicolons</h2>
+<pre class="highlight"><code class="language-C">for(int i = 0; i &amp;lt; 5; i++) ; printf(&quot;I'm printed once&quot;);
+while(x &amp;lt; 10); x++ ; // X is never incremented</code></pre>
+
+
+<p>However, the following code is perfectly OK.</p>
+<pre class="highlight"><code class="language-C">for(int i = 0; i &amp;lt; 5; i++){
+    printf(&quot;%d\n&quot;, i);;;;;;;;;;;;;
+}</code></pre>
+
+
+<p>It is OK to have this kind of code, because the C language uses semicolons (;) to separate statements. If there is no statement in between semicolons, then there is nothing to do and the compiler moves on to the next statement</p>
+<h1>Other Gotchas</h1>
+<h2>C Preprocessor macros and side-effects</h2>
+<pre class="highlight"><code class="language-C">#define min(a,b) ((a)&amp;lt;(b) ? (a) : (b))
+int x = 4;
+if(min(x++, 100)) printf(&quot;%d is six&quot;, x);</code></pre>
+
+
+<p>Macros are simple text substitution so the above example expands to <code>x++ &amp;lt; 100 ? x++ : 100</code> (parenthesis omitted for clarity)</p>
+<h2>C Preprocessor macros and precedence</h2>
+<pre class="highlight"><code class="language-C">#define min(a,b) a&amp;lt;b ? a : b
+int x = 99;
+int r = 10 + min(99, 100); // r is 100!</code></pre>
+
+
+<p>Macros are simple text substitution so the above example expands to <code>10 + 99 &amp;lt; 100 ? 99 : 100</code></p>
+<h2>Assignments in Conditions</h2>
+<pre class="highlight"><code class="language-C">int a = 0;
+if (a = 1) {
+    printf(&quot;What is a?\n&quot;);
+}</code></pre>
+
+
+<p>Notice the second line--<code>a = 1</code> vs. <code>a == 1</code>. What happens here? The assignment operator in C returns the value on the right. So in this case, <code>if (a = 1)</code> evaluates to <code>if (1)</code>.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

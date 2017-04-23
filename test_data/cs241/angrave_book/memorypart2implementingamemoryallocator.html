@@ -1,0 +1,156 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Memory, Part 2: Implementing a Memory Allocator</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Memory, Part 2: Implementing a Memory Allocator</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Memory, Part 2: Implementing a Memory Allocator
+            </div>
+            <h3>Memory, Part 2: Implementing a Memory Allocator</h3>
+
+<p>A memory allocator needs to keep track of which bytes are currently allocated and which are available for use. This page introduces the implementation and conceptual details of building an allocator, i.e. the actual code that implements <code>malloc</code> and <code>free</code>.</p>
+<h2>This page talks about links of blocks - do I malloc memory for them instead?</h2>
+<p>Though conceptually we are thinking about creating linked lists and lists of blocks, we don't need to "malloc memory" to create them! Instead we are writing integers and pointers into memory that we already control so that we can later consistently hop from one address to the next. This internal information represents some overhead. So even if we had requested 1024 KB of contiguous memory from the system, we will not be able to provide all of it to the running program.</p>
+<h2>Thinking in blocks</h2>
+<p>We can think of our heap memory as a list of blocks where each block is either allocated or unallocated.<br />
+Rather than storing an explicit list of pointers we store information about the block's size <em>as part of the block</em>. Thus there is conceptually a list of free blocks, but it is implicit, i.e. in the form of block size information that we store as part of each block.</p>
+<p>We could navigate from one block to the next block just by adding the block's size. For example if you have a pointer <code>p</code> that points to the start of a block, then <code>next_block</code>  with be at <code>((char *)p) +  *(size_t *) p</code>, if you are storing the size of the blocks in bytes. The cast to <code>char *</code> ensures that pointer arithmetic is calculated in bytes. The cast to <code>size_t *</code> ensures the memory at <code>p</code> is read as a size value and would be necessarily if <code>p</code> was a <code>void *</code> or <code>char *</code> type.</p>
+<p>The calling program never sees these values; they are internal to the implementation of the memory allocator. </p>
+<p>As an example, suppose your allocator is asked to reserve 80 bytes (<code>malloc(80)</code>) and requires 8 bytes of internal header data. The allocator would need to find an unallocated space of at least 88 bytes. After updating the heap data it would return a pointer to the block. However, the returned pointer does not point to the start of the block because that's where the internal size data is stored! Instead we would return the start of the block + 8 bytes.<br />
+In the implementation, remember that pointer arithmetic depends on type. For example, <code>p += 8</code> adds <code>8 * sizeof(p)</code>, not necessarily 8 bytes!</p>
+<h2>Implementing malloc</h2>
+<p>The simplest implementation uses first fit: Start at the first block, assuming it exists, and iterate until a block that represents unallocated space of sufficient size is found, or we've checked all the blocks.</p>
+<p>If no suitable block is found then it's time to call <code>sbrk()</code> again to sufficiently extend the size of the heap. A fast implementation might extend it a significant amount so that we will not need to request more heap memory in the near future.</p>
+<p>When a free block is found it may be larger than the space we need. If so, we will create two entries in our implicit list. The first entry is the allocated block, the second entry is the remaining space.</p>
+<p>There are two simple ways to note if a block is in use or available. The first is to store it as a byte in the header information along with the size and the second to encode it as the lowest bit in the size!<br />
+Thus block size information would be limited to only even values:</p>
+<pre class="highlight"><code>// Assumes p is a reasonable pointer type, e.g. 'size_t *'.
+isallocated = (*p) &amp;amp; 1;
+realsize = (*p) &amp;amp; ~1;  // mask out the lowest bit</code></pre>
+
+
+<h2>Alignment and rounding up considerations</h2>
+<p>Many architectures expect multi-byte primitives to be aligned to some multiple of 2^n. For example, it's common to require 4-byte types to be aligned to 4-byte boundaries (and 8-byte types on 8-byte boundaries). If multi-byte primitives are not stored on a reasonable boundary (for example starting at an odd address) then the performance can be significantly impacted because it may require two memory read requests instead of one. On some architectures the penalty is even greater - the program will crash with a <a href="http://en.wikipedia.org/wiki/Bus_error#Unaligned_access">bus error</a>.</p>
+<p>As <code>malloc</code> does not know how the user will use the allocated memory (array of doubles? array of chars?), the pointer returned to the program needs to be aligned for the worst case, which is architecture dependent.</p>
+<p>From glibc documentation, the glibc <code>malloc</code> uses the following heuristic:<br />
+"    The block that malloc gives you is guaranteed to be aligned so that it can hold any type of data. On GNU systems, the address is always a multiple of eight on most systems, and a multiple of 16 on 64-bit systems."</p>
+<p>For example, if you need to calculate how many 16 byte units are required, don't forget to round up -</p>
+<pre class="highlight"><code>int s = (requested_bytes + tag_overhead_bytes + 15) / 16</code></pre>
+
+
+<p>The additional constant ensures incomplete units are rounded up. Note, real code is more likely to symbol sizes e.g. <code>sizeof(x) - 1</code>, rather than coding numerical constant 15.</p>
+<h2>Implementing free</h2>
+<p>When <code>free</code> is called we need to re-apply the offset to get back to the 'real' start of the block (remember we didn't give the user a pointer to the actual start of the block?), i.e. to where we stored the size information.</p>
+<p>A naive implementation would simply mark the block as unused. If we are storing the block allocation status in the lowest size bit, then we just need to clear the bit:</p>
+<pre class="highlight"><code class="language-C">*p = (*p) &amp;amp; ~1; // Clear lowest bit </code></pre>
+
+
+<p>However, we have a bit more work to do: If the current block and the next block (if it exists) are both free we need to coalesce these blocks into a single block.<br />
+Similarly, we also need to check the previous block, too. If that exists and represents an unallocated memory, then we need to coalesce the blocks into a single large block.</p>
+<p>To be able to coalesce a free block with a previous free block we will also need to find the previous block, so we store the block's size at the end of the block, too. These are called "boundary tags" (ref Knuth73). As the blocks are contiguous, the end of one blocks sits right next to the start of the next block. So the current block (apart from the first one) can look a few bytes further back to lookup the size of the previous block. With this information you can now jump backwards!</p>
+<p><a href="http://www.eecs.harvard.edu/~mdw/course/cs61/mediawiki/images/5/53/Lectures-malloc1.pdf">http://www.eecs.harvard.edu/~mdw/course/cs61/mediawiki/images/5/53/Lectures-malloc1.pdf</a> <br />
+Slide 29<br />
+(Hey world - an open source licensed diagram of the above would be nice)<br />
+-Not sure if the above link is open source or licensed. Confirmation pending.</p>
+<h2>Performance</h2>
+<p>With the above description it's possible to build a memory allocator. It's main advantage is simplicity - at least simple compared to other allocators!<br />
+Allocating memory is a worst-case linear time operation (search linked lists for a sufficiently large free block) and de-allocation is constant time (no more than 3 blocks will need to be coalesced into a single block). Using this allocator it is possible to experiment with different placement strategies. For example, you could start searching from where you last free'd a block, or where you last allocated from. If you do store pointers to blocks, you need to be very careful that they always remain valid (e.g. when coalescing blocks or other malloc or free calls that change the heap structure)</p>
+<h2>Explicit Free Lists Allocators</h2>
+<p>Better performance can be achieved by implementing an explicit doubly-linked list of free nodes. In that case, we can immediately traverse to the next free block and the previous free block. This can halve the search time, because the linked list only includes unallocated blocks.</p>
+<p>A second advantage is that we now have some control over the ordering of the linked list. For example, when a block is free'd, we could choose to insert it into the beginning of the linked list rather than always between its neighbors. This is discussed below.</p>
+<p>Where do we store the pointers of our linked list? A simple trick is to realize that the block itself is not being used and store the next and previous pointers as part of the block (though now you have to ensure that the free blocks are always sufficiently large to hold two pointers).</p>
+<p>We still need to implement Boundary Tags (i.e. an implicit list using sizes), so that we can correctly free blocks and coalesce them with their two neighbors. Consequently, explicit free lists require more code and complexity.</p>
+<p>With explicit linked lists a fast and simple 'Find-First' algorithm is used to find the first sufficiently large link. However, since the link order can be modified, this corresponds to different placement strategies. For example if the links are maintained from largest to smallest, then this produces a 'Worst-Fit' placement strategy.</p>
+<h3>Explicit linked list insertion policy</h3>
+<p>The newly free'd block can be inserted easily into two possible positions: at the beginning or in address order (by using the boundary tags to first find the neighbors).</p>
+<p>Inserting at the beginning creates a LIFO (last-in, first-out) policy: The most recently free'd spaces will be reused. Studies suggest fragmentation is worse than using address order.</p>
+<p>Inserting in address order ("Address ordered policy") inserts free'd blocks so that the blocks are visited in increasing address order. This policy required more time to free a block because the boundary tags (size data) must be used to find the next and previous unallocated blocks. However, there is less fragmentation.</p>
+<h1>Case study: Buddy Allocator (an example of a segregated list)</h1>
+<p>A segregated allocator is one that divides the heap into different areas that are handled by different sub-allocators dependent on the size of the allocation request. Sizes are grouped into classes (e.g. powers of two) and each size is handled by a different sub-allocator and each size maintains its own free list.</p>
+<p>A well known allocator of this type is the buddy allocator. We'll discuss the binary buddy allocator which splits allocation into blocks of size 2^n (n = 1, 2, 3, ...) times some base unit number of bytes, but others also exist (e.g. Fibonacci split - can you see why it's named?). The basic concept is simple: If there are no free blocks of size 2^n, go to the next level and steal that block and split it into two. If two neighboring blocks of the same size become unallocated, they can be coalesced back together into a single large block of twice the size.</p>
+<p>Buddy allocators are fast because the neighboring blocks to coalesce with can be calculated from the free'd block's address, rather than traversing the size tags. Ultimate performance often requires a small amount of assembler code to use a specialized CPU instruction to find the lowest non-zero bit. </p>
+<p>The main disadvantage of the Buddy allocator is that they suffer from internal fragmentation, because allocations are rounded up to the nearest block size. For example, a 68-byte allocation will require a 128-byte block.</p>
+<h3>Further Reading and References</h3>
+<ul>
+<li>See <a href="http://books.google.com/books?id=0uHME7EfjQEC&amp;amp;lpg=PP1&amp;amp;pg=PA85#v=onepage&amp;amp;q&amp;amp;f=false">Foundations of Software Technology and Theoretical Computer Science 1999 proceedings</a> (Google books,page 85)</li>
+<li>ThanksForTheMemory UIUC lecture Slides (<a href="https://subversion.ews.illinois.edu/svn/fa14-cs241/_shared/lectures/CS241-05-ThanksForTheMemorySlides.pptx">pptx</a>) (<a href="https://subversion.ews.illinois.edu/svn/fa14-cs241/_shared/lectures/CS241-05-ThanksForTheMemorySlides.pptx.pdf">pdf</a>)<br />
+and </li>
+<li><a href="http://en.wikipedia.org/wiki/Buddy_memory_allocation">Wikipedia's buddy memory allocation page</a></li>
+</ul>
+<h1>Other allocators</h1>
+<p>There are many other allocation schemes. For example <a href="http://en.wikipedia.org/wiki/SLUB_%28software%29">SLUB</a> (wikipedia) - one of three allocators used internally by the Linux Kernel.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

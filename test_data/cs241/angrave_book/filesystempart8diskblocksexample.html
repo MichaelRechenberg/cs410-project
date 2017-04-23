@@ -1,0 +1,195 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>File System, Part 8: Disk blocks example</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">File System, Part 8: Disk blocks example</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; File System, Part 8: Disk blocks example
+            </div>
+            <h3>File System, Part 8: Disk blocks example</h3>
+
+<h2>Under construction</h2>
+<h2>Please can you explain a simple model of how the file's content is stored in a simple i-node based filesystem?</h2>
+<p>Sure!To answer this question we'll build a virtual disk and then write some C code to access its contents. Our filesystem will divide the bytes available into space for inodes and a much larger space for disk blocks. Each disk block will be 4096 bytes- </p>
+<pre class="highlight"><code class="language-C">// Disk size:
+#define MAX_INODE (1024)
+#define MAX_BLOCK (1024*1024)
+
+// Each block is 4096 bytes:
+typedef char[4096] block_t;
+
+// A disk is an array of inodes and an array of disk blocks:
+struct inode[MAX_INODE] inodes;
+block[MAX_BLOCK] blocks;</code></pre>
+
+
+<p>Note for clarity we will not use 'unsigned' in this code example. Our fixed-sized inodes will contain the file's size in bytes, permission,user,group information, time meta-data. What is most relevant to the problem-at hand is that it will also include ten pointers to disk blocks that we will use to refer to the actual file's contents!</p>
+<pre class="highlight"><code class="language-C">struct inode {
+ int[10] directblocks; // indices for the block array i.e. where to the find the file's content
+ long size;
+ // ... standard inode meta-data e.g.
+ int mode, userid,groupid;
+ time_t ctime,atime,mtime;
+}</code></pre>
+
+
+<p>Now we can work out how to read a byte at offset <code>position</code> of our file:</p>
+<pre class="highlight"><code class="language-C">char readbyte(inode*inode,long position) {
+  if(position &amp;lt;0 || position &amp;gt;= inode-&amp;gt;size) return -1; // invalid offset
+
+  int  block_count = position / 4096,offset = position % 4096;
+
+  // block count better be 0..9 !
+  int physical_idx = lookup_physical_block_index(inode, block_count );
+
+  // sanity check that the disk block index is reasonable...
+  assert(physical_idx &amp;gt;=0 &amp;amp;&amp;amp; physical_idx &amp;lt; MAX_BLOCK);
+
+
+  // read the disk block from our virtual disk 'blocks' and return the specific byte
+  return blocks[physical_idx][offset];
+}</code></pre>
+
+
+<p>Our initial version of lookup_physical_block is simple - we can use our table of 10 direct blocks!</p>
+<pre class="highlight"><code class="language-C">int lookup_physical_block_index(inode*inode, int block_count) {
+  assert(block_count&amp;gt;=0 &amp;amp;&amp;amp; block_count &amp;lt; 10);
+
+  return inode-&amp;gt;directblocks[ block_count ]; // returns an index value between [0,MAX_BLOCK)
+}</code></pre>
+
+
+<p>This simple representation is reasonable provided we can represent all possible files with just ten blocks i.e. upto 40KB. What about larger files? We need the inode struct to always be the same size so just increasing the existing direct block array to 20 would roughly double the size of our inodes. If most of our files require less than 10 blocks, then our inode storage is now wasteful. To solve this problem we will use a disk block calledn the <em>indirect block</em> to extend the array of pointers at our disposal. We will only need this for files &gt; 40KB</p>
+<pre class="highlight"><code class="language-C">struct inode {
+ int[10] directblocks; // if size&amp;lt;4KB then only the first one is valid
+ int indirectblock; // valid value when size &amp;gt;= 40KB
+ int size;
+ ...
+}</code></pre>
+
+
+<p>The indirect block is just a regular disk block of 4096 bytes but we will use it to hold pointers to disk blocks. Our pointers in this case are just integers, so we need to cast the pointer to an integer pointer:</p>
+<pre class="highlight"><code class="language-C">int lookup_physical_block_index(inode*inode, int block_count) {
+  assert(sizeof(int)==4); // Warning this code assumes an index is 4 bytes!
+  assert(block_count&amp;gt;=0 &amp;amp;&amp;amp; block_count &amp;lt; 1024 + 10); // 0 &amp;lt;= block_count&amp;lt; 1034
+
+  if( block_count &amp;lt; 10)
+     return inode-&amp;gt;directblocks[ block_count ];
+
+  // read the indirect block from disk:
+  block_t* oneblock = &amp;amp; blocks[ inode-&amp;gt;indirectblock ];
+
+  // Treat the 4KB as an array of 1024 pointers to other disk blocks
+  int* table = (int*) oneblock;
+
+ // Look up the correct entry in the table
+ // Offset by 10 because the first 10 blocks of data are already 
+ // accounted for
+  return table[ block_count - 10 ];
+}</code></pre>
+
+
+<p>For a typical filesystem our index values are 32 bits i.e. 4bytes. Thus in 4096 bytes we can store 4096 / 4 = 1024 entries<br />
+This means our indirect block can refer to 1024 * 4KB = 4MB of data. With the first ten direct blocks we can therefore accommodate files up to 40KB + 1024 * 4KB= 4136KB . Some of the later table entries can be invalid for files that are smaller than this. </p>
+<p>For even larger files we could use two indirect blocks. However there's a better alternative, that will allow us to efficiently scale up to huge files. We will include a double-indirect pointer and if that's not enough a triple indirect pointer. The double indirect pointer means we have a table of 1024 entries to disk blocks that are used as 1024 entries. This means we can refer to 1024*1024 disk blocks of data.</p>
+<p><img alt="inode disk blocks for data" src="http://uw714doc.sco.com/en/FS_admin/graphics/s5chain.gif" /></p>
+<p>(source: <a href="http://uw714doc.sco.com/en/FS_admin/graphics/s5chain.gif">http://uw714doc.sco.com/en/FS_admin/graphics/s5chain.gif</a>)</p>
+<pre class="highlight"><code class="language-C">int lookup_physical_block_index(inode*inode, int block_count) {
+  if( block_count &amp;lt; 10)
+     return inode-&amp;gt;directblocks[ block_count ];
+
+  // Use indirect block for the next 1024 blocks:
+  // Assumes 1024 ints can fit inside each block!
+  if( block_count &amp;lt; 1024 + 10) {   
+      int* table = (int*) &amp;amp; blocks[ inode-&amp;gt;indirectblock ];
+      return table[ block_count - 10 ];
+  }
+  // For huge files we will use a table of tables
+  int i = (block_count - 1034) / 1024 , j = (block_count - 1034) % 1024;
+  assert(i&amp;lt;1024); // triple-indirect is not implemented here!
+
+  int* table1 = (int*) &amp;amp; blocks[ inode-&amp;gt;doubleindirectblock ];
+   // The first table tells us where to read the second table ...
+  int* table2 = (int*) &amp;amp; blocks[   table1[i]   ];
+  return table2[j];
+
+   // For gigantic files we will need to implement triple-indirect (table of tables of tables)
+}</code></pre>
+
+
+<p>Notice that reading a byte using double indirect requires 3 disk block reads (two tables and the actual data block).</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

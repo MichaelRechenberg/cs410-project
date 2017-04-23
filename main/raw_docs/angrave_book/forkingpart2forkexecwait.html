@@ -1,0 +1,175 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Forking, Part 2: Fork, Exec, Wait</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Forking, Part 2: Fork, Exec, Wait</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Forking, Part 2: Fork, Exec, Wait
+            </div>
+            <h3>Forking, Part 2: Fork, Exec, Wait</h3>
+
+<h2>What does the following 'exec' example do?</h2>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;fcntl.h&amp;gt; // O_CREAT, O_APPEND etc. defined here
+
+int main() {
+   close(1); // close standard out
+   open(&quot;log.txt&quot;, O_RDWR | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR);
+   puts(&quot;Captain's log&quot;);
+   chdir(&quot;/usr/include&quot;);
+   // execl( executable,  arguments for executable including program name and NULL at the end)
+
+   execl(&quot;/bin/ls&quot;, /* Remaining items sent to ls*/ &quot;/bin/ls&quot;, &quot;.&quot;, (char *) NULL); // &quot;ls .&quot;
+   perror(&quot;exec failed&quot;);
+   return 0; // Not expected
+}</code></pre>
+
+
+<p>There's no error checking in the above code (we assume close,open,chdir etc works as expected).<br />
+<em> open: will use the lowest available file descriptor (i.e. 1) ; so standard out now goes to the log file.<br />
+</em> chdir : Change the current directory to /usr/include<br />
+<em> execl : Replace the program image with /bin/ls and call its main() method<br />
+</em> perror : We don't expect to get here - if we did then exec failed.</p>
+<h2>What does the child inherit from the parent?</h2>
+<ul>
+<li>Open filehandles. If the parent later seeks, say, to the back to the beginning of the file then this will affect the child too (and vice versa). </li>
+<li>Signal handlers</li>
+<li>Current working directory</li>
+<li>Environment variables</li>
+</ul>
+<p>See the <a href="http://linux.die.net/man/2/fork">fork man page</a> for more details.</p>
+<h2>What is different in the child process than the parent process?</h2>
+<p>The process id is different. In the child calling <code>getppid()</code> (notice the two 'p's) will give the same result as calling getpid() in the parent. See the fork man page for more details.</p>
+<h2>How do I wait for my child to finish?</h2>
+<p>Use <code>waitpid</code> or <code>wait</code>. The parent process will pause until <code>wait</code> (or <code>waitpid</code>) returns. Note this explanation glosses over the restarting discussion.</p>
+<h2>What is the fork-exec-wait pattern</h2>
+<p>A common programming pattern is to call <code>fork</code> followed by <code>exec</code> and <code>wait</code>. The original process calls fork, which creates a child process. The child process then uses exec to start execution of a new program. Meanwhile the parent uses <code>wait</code> (or <code>waitpid</code>) to wait for the child process to finish.<br />
+See below for a complete code example.</p>
+<h2>How do I start a background process that runs as the same time?</h2>
+<p>Don't wait for them! Your parent process can continue to execute code without having to wait for the child process. Note in practice background processes can also be disconnected from the parent's input and output streams by calling <code>close</code> on the open file descriptors before calling exec.</p>
+<p>However child processes that finish before their parent finishes can become zombies. See the zombie page for more information.</p>
+<h2>Good parents don't let their children become zombies!</h2>
+<p>When a child finishes (or terminates) it still takes up a slot in the kernel process table. <br />
+Only when the child has been 'waited on' will the slot be available again.</p>
+<p>A long running program could create many zombies by continually creating processes and never <code>wait</code>-ing for them.</p>
+<h2>What would be effect of too many zombies?</h2>
+<p>Eventually there would be insufficient space in the kernel process table to create a new processes. Thus <code>fork()</code> would fail and could make the system difficult / impossible to use - for example just logging in requires a new process!</p>
+<h2>What does the system do to help prevent zombies?</h2>
+<p>Once a process completes, any of its children will be assigned to "init" - the first process with pid of 1. Thus these children would see getppid() return a value of 1. The init process automatically waits for all of its children, thus removing zombies from the system.</p>
+<h2>How do I prevent zombies? (Warning: Simplified answer)</h2>
+<p>Wait on your child!</p>
+<pre class="highlight"><code class="language-C">waitpid(child, &amp;amp;status, 0); // Clean up and wait for my child process to finish.</code></pre>
+
+
+<p>Note we assume that the only reason to get a SIGCHLD event is that a child has finished (this is not quite true - see man page for more details).</p>
+<p>A robust implementation would also check for interrupted status and include the above in a loop.<br />
+Read on for a discussion of a more robust implementation.</p>
+<h2>How can I asynchronously wait for my child using SIGCHLD? (ADVANCED)</h2>
+<p>Warning: This section uses signals which we have not yet fully introduced.<br />
+The parent gets the signal SIGCHLD when a child completes, so the signal handler can wait on the process. A slightly simplified version is shown below.</p>
+<pre class="highlight"><code class="language-C">pid_t child;
+
+void cleanup(int signal) {
+  int status;
+  waitpid(child, &amp;amp;status, 0);
+  write(1,&quot;cleanup!\n&quot;,9);
+}
+int main() {
+   // Register signal handler BEFORE the child can finish
+   signal(SIGCHLD, cleanup); // or better - sigaction
+   child = fork();
+   if (child == -1) { exit(EXIT_FAILURE);}
+
+   if (child == 0) { /* I am the child!*/
+     // Do background stuff e.g. call exec   
+   } else { /* I'm the parent! */
+      sleep(4); // so we can see the cleanup
+      puts(&quot;Parent is done&quot;);
+   }
+   return 0;
+} </code></pre>
+
+
+<p>The above example however misses a couple of subtle points:<br />
+<em> More than one child may have finished but the parent will only get one SIGCHLD signal (signals are not queued)<br />
+</em> SIGCHLD signals can be sent for other reasons (e.g. a child process is temporarily stopped)</p>
+<p>A more robust code to reap zombies is shown below.</p>
+<pre class="highlight"><code class="language-C">void cleanup(int signal) {
+  int status;
+  while (waitpid((pid_t) (-1), 0, WNOHANG) &amp;gt; 0) {}
+}</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

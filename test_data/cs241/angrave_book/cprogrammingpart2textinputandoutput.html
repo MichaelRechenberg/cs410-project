@@ -1,0 +1,178 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>C Programming, Part 2: Text Input And Output</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">C Programming, Part 2: Text Input And Output</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; C Programming, Part 2: Text Input And Output
+            </div>
+            <h3>C Programming, Part 2: Text Input And Output</h3>
+
+<h2>How do I print strings, ints, chars to the standard output stream?</h2>
+<p>Use <code>printf</code>. The first parameter is a format string that includes placeholders for the data to be printed. Common format specifiers are <code>%s</code> treat the argument as a c string pointer, keep printing all characters until the NULL-character is reached; <code>%d</code> print the argument as an integer; <code>%p</code> print the argument as a memory address. </p>
+<p>A simple example is shown below:</p>
+<pre class="highlight"><code class="language-C">char *name = ... ; int score = ...;
+printf(&quot;Hello %s, your result is %d\n&quot;, name, score);
+printf(&quot;Debug: The string and int are stored at: %p and %p\n&quot;, name, &amp;amp;score );
+// name already is a char pointer and points to the start of the array. 
+// We need &quot;&amp;amp;&quot; to get the address of the int variable</code></pre>
+
+
+<p>By default, for performance, <code>printf</code> does not actually write anything out (by calling write) until its buffer is full or a newline is printed. </p>
+<h2>How else can I print strings and single characters?</h2>
+<p>Use <code>puts( name );</code> and <code>putchar( c )</code>  where name is a pointer to a C string and c is just a <code>char</code></p>
+<h2>How do I print to other file streams?</h2>
+<p>Use <code>fprintf( _file_ , "Hello %s, score: %d", name, score);</code><br />
+Where _file_ is either predefined 'stdout' 'stderr' or a FILE pointer that was returned by <code>fopen</code> or <code>fdopen</code></p>
+<h2>How do I print data into a C string?</h2>
+<p>Use <code>sprintf</code> or better <code>snprintf</code>.</p>
+<pre class="highlight"><code class="language-C">char result[200];
+int len = snprintf(result, sizeof(result), &quot;%s:%d&quot;, name, score);</code></pre>
+
+
+<p>snprintf returns the number of characters written excluding the terminating byte. In the above example this would be a maximum of 199.</p>
+<h2>How do I parse input using <code>scanf</code> into parameters?</h2>
+<p>Use <code>scanf</code> (or <code>fscanf</code> or <code>sscanf</code>) to get input from the default input stream, an arbitrary file stream or a C string respectively.<br />
+It's a good idea to check the return value to see how many items were parsed.<br />
+<code>scanf</code> functions require valid pointers. It's a common source of error to pass in an incorrect pointer value. For example,</p>
+<pre class="highlight"><code>int *data = (int *) malloc(sizeof(int));
+char *line = &quot;v 10&quot;;
+char type;
+// Good practice: Check scanf parsed the line and read two values:
+int ok = 2 == sscanf(line, &quot;%c %d&quot;, &amp;amp;type, &amp;amp;data); // pointer error</code></pre>
+
+
+<p>We wanted to write the character value into c and the integer value into the malloc'd memory.<br />
+However we passed the address of the data pointer, not what the pointer is pointing to! So <code>sscanf</code> will change the pointer itself. i.e. the pointer will now point to address 10 so this code will later fail e.g. when free(data) is called.</p>
+<h2>How do I stop scanf from causing a buffer overflow?</h2>
+<p>The following code assumes the scanf won't read more than 10 characters (including the terminating byte) into the buffer.</p>
+<pre class="highlight"><code class="language-C">char buffer[10];
+scanf(&quot;%s&quot;,buffer);</code></pre>
+
+
+<p>You can include an optional integer to specify how many characters EXCLUDING the terminating byte:</p>
+<pre class="highlight"><code class="language-C">char buffer[10];
+scanf(&quot;%9s&quot;, buffer); // reads upto 9 charactes from input (leave room for the 10th byte to be the terminating byte)</code></pre>
+
+
+<h2>Why is <code>gets</code> dangerous? What should I use instead?</h2>
+<p>The following code is vulnerable to buffer overflow. It assumes or trusts that the input line will be no more than 10 characters, including the terminating byte.</p>
+<pre class="highlight"><code>char buf[10];
+gets(buf); // Remember the array name means the first byte of the array</code></pre>
+
+
+<p><code>gets</code> is deprecated and will be removed in future versions of the C standard. Programs should use <code>fgets</code> or <code>getline</code> instead. </p>
+<p>Where each have the following structure respectively:</p>
+<pre class="highlight"><code>char *fgets (char *str, int num, FILE *stream); 
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);</code></pre>
+
+
+<p>Here's a simple, safe way to read a single line. Lines longer than 9 characters will be truncated:</p>
+<pre class="highlight"><code class="language-C">char buffer[10];
+char *result = fgets(buffer, sizeof(buffer), stdin);</code></pre>
+
+
+<p>The result is NULL if there was an error or the end of the file is reached.<br />
+Note, unlike <code>gets</code>,  <code>fgets</code> copies the newline into the buffer, which you may want to discard-</p>
+<pre class="highlight"><code class="language-C">if (!result) { return; /* no data - don't read the buffer contents */}
+
+int i= strlen(buffer) -1;
+if (buffer[i] == '\n') buffer[i] = '\0'</code></pre>
+
+
+<h2>How do I use <code>getline</code>?</h2>
+<p>One of the advantages of <code>getline</code> is that will automatically (re-) allocate a buffer on the heap of sufficient size.</p>
+<pre class="highlight"><code class="language-C">// ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+
+ /* set buffer and size to 0; they will be changed by getline*/
+char *buffer = NULL;
+size_t size = 0;
+
+ssize_t chars = getline(&amp;amp;buffer, &amp;amp;size, stdin);
+
+// Discard newline character if it is present,
+if (chars &amp;gt; 0 &amp;amp;&amp;amp; buffer[chars -1] =='\n') buffer[chars-1] = '\0';
+
+// Read another line.
+// The existing buffer will be re-used, or, if necessary,
+// It will be `free`'d and a new larger buffer will `malloc`'d
+chars = getline(&amp;amp;buffer, &amp;amp;size, stdin);
+
+// Later... don't forget to free the buffer!
+free(buffer);</code></pre>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

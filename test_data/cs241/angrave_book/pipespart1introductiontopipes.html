@@ -1,0 +1,162 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pipes, Part 1: Introduction to pipes</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Pipes, Part 1: Introduction to pipes</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Pipes, Part 1: Introduction to pipes
+            </div>
+            <h3>Pipes, Part 1: Introduction to pipes</h3>
+
+<h2>What is a pipe?</h2>
+<p>A POSIX pipe is almost like its real counterpart - you can stuff bytes down one end and they will appear at the other end in the same order. Unlike real pipes however, the flow is always in the same direction, one file descriptor is used for reading and the other for writing. The <code>pipe</code> system call is used to create a pipe.</p>
+<pre class="highlight"><code class="language-C">int filedes[2];
+pipe (filedes);
+printf(&quot;read from %d, write to %d\n&quot;, filedes[0], filedes[1]);</code></pre>
+
+
+<p>These file descriptors can be used with <code>read</code> -</p>
+<pre class="highlight"><code class="language-C">// To read...
+char buffer[80];
+int bytesread = read(filedes[0], buffer, sizeof(buffer));</code></pre>
+
+
+<p>And <code>write</code> - </p>
+<pre class="highlight"><code class="language-C">write(filedes[1], &quot;Go!&quot;, 4);</code></pre>
+
+
+<h2>How can I use pipe to communicate with a child process?</h2>
+<p>A common method of using pipes is to create the pipe before forking.</p>
+<pre class="highlight"><code class="language-C">int filedes[2];
+pipe (filedes);
+pid_t child = fork();
+if (child &amp;gt; 0) { /* I must be the parent */
+    char buffer[80];
+    int bytesread = read(filedes[0], buffer, sizeof(buffer));
+    // do something with the bytes read    
+}</code></pre>
+
+
+<p>The child can then send a message back to the parent:</p>
+<pre class="highlight"><code class="language-C">if (child == 0) {
+   write(filedes[1], &quot;done&quot;, 4);
+}</code></pre>
+
+
+<h2>Can I use pipes inside a single process?</h2>
+<p>Short answer: Yes, but I'm not sure why you would want to LOL!</p>
+<p>Here's an example program that sends a message to itself:</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+
+int main() {
+    int fh[2];
+    pipe(fh);
+    FILE *reader = fdopen(fh[0], &quot;r&quot;);
+    FILE *writer = fdopen(fh[1], &quot;w&quot;);
+    // Hurrah now I can use printf rather than using low-level read() write()
+    printf(&quot;Writing...\n&quot;);
+    fprintf(writer,&quot;%d %d %d\n&quot;, 10, 20, 30);
+    fflush(writer);
+
+    printf(&quot;Reading...\n&quot;);
+    int results[3];
+    int ok = fscanf(reader,&quot;%d %d %d&quot;, results, results + 1, results + 2);
+    printf(&quot;%d values parsed: %d %d %d\n&quot;, ok, results[0], results[1], results[2]);
+
+    return 0;
+}</code></pre>
+
+
+<p>The problem with using a pipe in this fashion is that writing to a pipe can block i.e. the pipe only has a limited buffering capacity. If the pipe is full the writing process will block! The maximum size of the buffer is system dependent; typical values from  4KB upto 128KB.</p>
+<pre class="highlight"><code class="language-C">int main() {
+    int fh[2];
+    pipe(fh);
+    int b = 0;
+    #define MESG &quot;...............................&quot;
+    while(1) {
+        printf(&quot;%d\n&quot;,b);
+        write(fh[1], MESG, sizeof(MESG))
+        b+=sizeof(MESG);
+    }
+    return 0;
+}</code></pre>
+
+
+<p>See [[Pipes, Part 2: Pipe programming secrets]]</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>
