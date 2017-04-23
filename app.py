@@ -59,9 +59,9 @@ def handler():
   file_names = []
   #run through result tuples and create a list of wots using the filepaths
   for elem in results:
-    window = generate_wot(query, os.path.join(pss.get_parsed_docs_dir, str(elem[0])))
+    window = generate_wot(query, os.path.join(pss.get_parsed_docs_dir(), str(elem[0])))
     windows.append(window)
-    raw_paths.append(elem[2])
+    raw_paths.append(os.abspath(elem[2]))
     file_names.append(os.path.basename(elem[2]))
   
   return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names)
