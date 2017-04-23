@@ -1,0 +1,41 @@
+<!-- response to query -->
+
+<html>
+
+<head>
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+</head>
+
+<body>
+<div id = "container">
+	<div id = "response">
+		<strong>Your Query:</strong> {{query}}
+		<form action = "{{url_for('main')}}">
+			<input type = "submit" value="New Query">
+		</form>
+	</div>
+
+	<div id = "docList">
+		<ol>
+			{% for f in range(file_names|length) %}
+				<li>
+					<a href="{{raw_paths[f]}}">{{file_names[f]}}</a><br>
+					<p>{{windows[f]}}</p>
+				</li>
+			{% endfor %}
+		</ol>
+		<!-- to be added -->
+	</div>
+
+
+<!--	@app.route('/handler/' methods=['POST'])
+	def handler():
+		query = request.form['queryPost']
+		return render_template('response.html', query=query)
+-->
+
+</div>
+
+</body>
+</html>
+
