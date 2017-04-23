@@ -49,19 +49,39 @@ app = Flask(__name__)
 def main():
   return render_template('query.html')
 
-@app.route('/handler', methods = ['POST'])
+@app.route('/result', methods = ['POST'])
 def handler():
   query = request.form['query']
   #Use the PSS_Runner to score the query
   results = pss.score_query(query, MAX_NUM_RESULTS)
-  #Do stuff with results
+  windows = []
+  raw_paths = []
+  file_names = []
+  #run through result tuples and create a list of wots using the filepaths
+  for elem in results:
+    window = generate_wot(query, os.path.join(pss.get_parsed_docs_dir(), str(elem[0])))
+    windows.append(window)
+    raw_paths.append(os.path.join(pss.get_raw_docs_dir(), str(elem[2])))
+    file_names.append(os.path.basename(elem[2]))
+  
+  return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names)
 
-  return render_template('', query = query)
+def generate_wot(query, filepath):
 
-@app.route('/raw/<path:doc_request>')
+  window = ""
+  with open(filepath, 'r+') as f:
+    for line in f:
+      if query in line:
+        window = line;
+        break
+
+  return window;
+
+
+@app.route('/raw_docs/<path:doc_request>')
 def show_doc(doc_request):
   #local_ip = get_lan_ip
-  return send_from_directory(RAW_DOCS_DIRECTORY, doc_request);
+  return send_from_directory(pss.get_raw_docs_dir(), doc_request);
 
 if __name__ == '__main__':
 
@@ -77,6 +97,7 @@ if __name__ == '__main__':
     'angrave_book': PSS.html_parser_function,
     'pdfs':         PSS.pdf_parser_function
   }
+
   pss.parser_mappings = parser_mappings
 
   #Set collection weights
@@ -86,12 +107,11 @@ if __name__ == '__main__':
     'pdfs'        : 1,
     'mp_docs'     : 3,
   }
+
   pss.weights = weights
   pss.parse_raw_docs()
   pss.generate_index()
 
   print("PSS_Runner Created Successfully")
-
-
 
   app.run(host='0.0.0.0')
