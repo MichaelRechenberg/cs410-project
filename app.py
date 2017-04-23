@@ -78,7 +78,7 @@ def generate_wot(query, filepath):
   return window;
 
 
-@app.route('/raw/<path:doc_request>')
+@app.route('/raw_docs/<path:doc_request>')
 def show_doc(doc_request):
   #local_ip = get_lan_ip
   return send_from_directory(RAW_DOCS_DIRECTORY, doc_request);
