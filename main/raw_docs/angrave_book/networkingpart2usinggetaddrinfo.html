@@ -1,0 +1,186 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Networking, Part 2: Using getaddrinfo</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Networking, Part 2: Using getaddrinfo</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Networking, Part 2: Using getaddrinfo
+            </div>
+            <h3>Networking, Part 2: Using getaddrinfo</h3>
+
+<h2>How do I use <code>getaddrinfo</code> to convert the hostname into an IP address?</h2>
+<p>The function <code>getaddrinfo</code> can convert a human readable domain name (e.g. <code>www.illinois.edu</code>) into an IPv4 and IPv6 address. In fact it will return a linked-list of addrinfo structs:</p>
+<pre class="highlight"><code class="language-C">struct addrinfo {
+    int              ai_flags;
+    int              ai_family;
+    int              ai_socktype;
+    int              ai_protocol;
+    socklen_t        ai_addrlen;
+    struct sockaddr *ai_addr;
+    char            *ai_canonname;
+    struct addrinfo *ai_next;
+};</code></pre>
+
+
+<p>It's very easy to use. For example, suppose you wanted to find out the numeric IPv4 address of a webserver at <a href="http://www.bbc.com">www.bbc.com</a>. We do this in two stages. First use getaddrinfo to build a linked-list of possible connections. Secondly use <code>getnameinfo</code> to convert the binary address into a readable form.</p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt;
+#include &amp;lt;sys/socket.h&amp;gt;
+#include &amp;lt;netdb.h&amp;gt;
+
+struct addrinfo hints, *infoptr; // So no need to use memset global variables
+
+int main() {
+  hints.ai_family = AF_INET; // AF_INET means IPv4 only addresses
+
+  int result = getaddrinfo(&quot;www.bbc.com&quot;, NULL, &amp;amp;hints, &amp;amp;infoptr);
+  if (result) {
+    fprintf(stderr, &quot;getaddrinfo: %s\n&quot;, gai_strerror(result));
+    exit(1);
+  }
+
+  struct addrinfo *p;
+  char host[256],service[256];
+
+  for(p = infoptr; p != NULL; p = p-&amp;gt;ai_next) {
+
+    getnameinfo(p-&amp;gt;ai_addr, p-&amp;gt;ai_addrlen, host, sizeof(host), service, sizeof(service), NI_NUMERICHOST);
+    puts(host);
+  }
+
+  freeaddrinfo(infoptr);
+  return 0;
+}</code></pre>
+
+
+<p>Typical output:</p>
+<pre class="highlight"><code>212.58.244.70
+212.58.244.71</code></pre>
+
+
+<h2>How is <a href="http://www.cs.illinois.edu">www.cs.illinois.edu</a> converted into an IP address?</h2>
+<p>Magic! No seriously, a system called "DNS" (Domain Name Service) is used. If a machine does not hold the answer locally then it sends a UDP packet to a local DNS server. This server in turn may query other upstream DNS servers. </p>
+<h2>Is DNS secure?</h2>
+<p>DNS by itself is fast but not secure. DNS requests are not encrypted and susceptible to 'man-in-the-middle' attacks. For example, a coffee shop internet connection could easily subvert your DNS requests and send back different IP addresses for a particular domain</p>
+<h2>How do I connect to a TCP server (e.g. web server?)</h2>
+<p>TODO<br />
+There are three basic system calls you need to connect to a remote machine:</p>
+<pre class="highlight"><code>getaddrinfo -- Determine the remote addresses of a remote host
+socket  -- Create a socket
+connect  -- Connect to the remote host using the socket and address information</code></pre>
+
+
+<p>The <code>getaddrinfo</code> call if successful, creates a linked-list of <code>addrinfo</code> structs and sets the given pointer to point to the first one.</p>
+<p>The socket call creates an outgoing socket and returns a descriptor (sometimes called a 'file descriptor') that can be used with <code>read</code> and <code>write</code> etc.In this sense it is the network analog of <code>open</code> that opens a file stream - except that we haven't connected the socket to anything yet!</p>
+<p>Finally the connect call attempts the connection to the remote machine. We pass the original socket descriptor and also the socket address information which is stored inside the addrinfo structure. There are different kinds of socket address structures (e.g. IPv4 vs IPv6) which can require more memory. So in addition to passing the pointer, the size of the structure is also passed:</p>
+<pre class="highlight"><code class="language-C">// Pull out the socket address info from the addrinfo struct:
+connect(sockfd, p-&amp;gt;ai_addr, p-&amp;gt;ai_addrlen)</code></pre>
+
+
+<h2>How do I free the memory allocated for the linked-list of addrinfo structs?</h2>
+<p>As part of the clean up code call <code>freeaddrinfo</code> on the top-most <code>addrinfo</code> struct:</p>
+<pre class="highlight"><code class="language-C">void freeaddrinfo(struct addrinfo *ai);</code></pre>
+
+
+<h2>If getaddrinfo fails can I use <code>strerror</code> to print out the error?</h2>
+<p>No. Error handling with <code>getaddrinfo</code> is a little different:<br />
+<em>  The return value <em>is</em> the error code (i.e. don't use <code>errno</code>)<br />
+</em> Use <code>gai_strerror</code> to get the equivalent short English error text:</p>
+<pre class="highlight"><code class="language-C">int result = getaddrinfo(...);
+if(result) { 
+   char *mesg = gai_strerror(result); 
+   ...
+}</code></pre>
+
+
+<h2>Can I request only IPv4 or IPv6 connection? TCP only?</h2>
+<p>Yes! Use the addrinfo structure that is passed into <code>getaddrinfo</code> to define the kind of connection you'd like.</p>
+<p>For example, to specify stream-based protocols over IPv6:</p>
+<pre class="highlight"><code class="language-C">struct addrinfo hints;
+memset(hints, 0, sizeof(hints));
+
+hints.ai_family = AF_INET6; // Only want IPv6 (use AF_INET for IPv4)
+hints.ai_socktype = SOCK_STREAM; // Only want stream-based connection</code></pre>
+
+
+<h2>What about code examples that use <code>gethostbyname</code>?</h2>
+<p>The old function <code>gethostbyname</code> is deprecated; it's the old way convert a host name into an IP address. The port address still needs to be manually set using htons function. It's much easier to write code to support IPv4 AND IPv6 using the newer <code>getaddrinfo</code></p>
+<h2>Is it that easy!?</h2>
+<p>Yes and no. It's easy to create a simple TCP client - however network communications offers many different levels of abstraction and several attributes and options that can be set at each level of abstraction (for example we haven't talked about <code>setsockopt</code> which can manipulate options for the socket).<br />
+For more information see this <a href="http://www.beej.us/guide/bgnet/output/html/multipage/getaddrinfoman.html">guide</a>.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

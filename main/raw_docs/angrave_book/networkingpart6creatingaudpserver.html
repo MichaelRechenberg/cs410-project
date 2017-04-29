@@ -1,0 +1,114 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Networking, Part 6: Creating a UDP server</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Networking, Part 6: Creating a UDP server</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Networking, Part 6: Creating a UDP server
+            </div>
+            <h3>Networking, Part 6: Creating a UDP server</h3>
+
+<h2>How do I create a UDP server?</h2>
+<p>There are a variety of function calls available to send UDP sockets. We will use the newer getaddrinfo to help set up a socket structure.</p>
+<p>Remember that UDP is a simple packet-based ('data-gram') protocol ; there is no connection to set up between the two hosts.</p>
+<p>First, initialize the hints addrinfo struct to request an IPv6, passive datagram socket.</p>
+<pre class="highlight"><code class="language-C">memset(&amp;amp;hints, 0, sizeof(hints));
+hints.ai_family = AF_INET6; // INET for IPv4
+hints.ai_socktype =  SOCK_DGRAM;
+hints.ai_flags =  AI_PASSIVE;</code></pre>
+
+
+<p>Next, use getaddrinfo to specify the port number (we don't need to specify a host as we are creating a server socket, not sending a packet to a remote host).</p>
+<pre class="highlight"><code class="language-C">getaddrinfo(NULL, &quot;300&quot;, &amp;amp;hints, &amp;amp;res);
+
+sockfd = socket(res-&amp;gt;ai_family, res-&amp;gt;ai_socktype, res-&amp;gt;ai_protocol);
+bind(sockfd, res-&amp;gt;ai_addr, res-&amp;gt;ai_addrlen);</code></pre>
+
+
+<p>The port number is &lt;1024, so the program will need <code>root</code> privileges. We could have also specified a service name instead of a numeric port value.</p>
+<p>So far the calls have been similar to a TCP server. For a stream-based service we would call <code>listen</code> and accept. For our UDP-serve we can just start waiting for the arrival of a packet on the socket-</p>
+<pre class="highlight"><code class="language-C">struct sockaddr_storage addr;
+int addrlen = sizeof(addr);
+
+// ssize_t recvfrom(int socket, void* buffer, size_t buflen, int flags, struct sockaddr *addr, socklen_t * address_len);
+
+byte_count = recvfrom(sockfd, buf, sizeof(buf), 0, &amp;amp;addr, &amp;amp;addrlen);</code></pre>
+
+
+<p>The addr struct will hold sender (source) information about the arriving packet.<br />
+Note the <code>sockaddr_storage</code> type is a sufficiently large enough to hold all possible types of socket addresses (e.g. IPv4, IPv6 and other socket types).</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>

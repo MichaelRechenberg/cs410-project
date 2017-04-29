@@ -1,0 +1,183 @@
+<!doctype html>
+<!--
+  Material Design Lite
+  Copyright 2015 Google Inc. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      https://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="description" content="A front-end template that helps you build fast, modern mobile web apps.">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Networking, Part 4: Building a simple TCP Server</title>
+
+    <!-- Add to homescreen for Chrome on Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="icon" sizes="192x192" href="images/android-desktop.png">
+
+    <!-- Add to homescreen for Safari on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Material Design Lite">
+    <link rel="apple-touch-icon-precomposed" href="images/ios-desktop.png">
+
+    <link rel="shortcut icon" href="images/favicon.png">
+
+    <!-- SEO: If your mobile URL is different from the desktop URL, add a canonical link to the desktop page https://developers.google.com/webmasters/smartphone-sites/feature-phones -->
+    <!--
+    <link rel="canonical" href="http://www.example.com/">
+    -->
+
+    <link href='//fonts.googleapis.com/css?family=Roboto:regular,bold,italic,thin,light,bolditalic,black,medium&amp;lang=en' rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet">
+    <link rel="stylesheet" href="material.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="http://yui.yahooapis.com/pure/0.6.0/buttons-min.css">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  </head>
+  <body>
+    <div class="demo-layout mdl-layout mdl-layout--fixed-header mdl-js-layout mdl-color--grey-100">
+      <header class="demo-header mdl-layout__header mdl-layout__header--scroll mdl-color--grey-100 mdl-color-text--grey-800">
+        <div class="mdl-layout__header-row">
+        <span class="mdl-layout-title">Networking, Part 4: Building a simple TCP Server</span>
+          <div class="mdl-layout-spacer"></div>
+        </div>
+      </header>
+      <div class="demo-ribbon"></div>
+      <main class="demo-main mdl-layout__content">
+        <div class="demo-container mdl-grid">
+          <div class="mdl-cell mdl-cell--2-col mdl-cell--hide-tablet mdl-cell--hide-phone"></div>
+          <div class="demo-content mdl-color--white mdl-shadow--4dp content mdl-color-text--grey-800 mdl-cell mdl-cell--8-col">
+            <div class="demo-crumbs mdl-color-text--grey-500">
+                CS 241 &gt; Wikibook &gt; Networking, Part 4: Building a simple TCP Server
+            </div>
+            <h3>Networking, Part 4: Building a simple TCP Server</h3>
+
+<h2>What is <code>htons</code> and when is it used?</h2>
+<p>Integers can be represented in least significant byte first or most-significant byte first. Either approach is reasonable as long as the machine itself is internally consistent. For network communications we need to standardize on agreed format.</p>
+<p><code>htons(xyz)</code> returns the 16 bit unsigned integer 'short' value xyz in network byte order.<br />
+<code>htonl(xyz)</code> returns the 32 bit unsigned integer 'long' value xyz in network byte order.</p>
+<p>These functions are read as 'host to network'; the inverse functions (ntohs, ntohl) convert network ordered byte values to host-ordered ordering. So, is host-ordering  little-endian or big-endian? The answer is - it depends on your machine! It depends on the actual architecture of the host running the code. If the architecture happens to be the same as network ordering then the result of these functions is just the argument. For x86 machines, the host and network ordering <em>is</em> different.</p>
+<p>Summary: Whenever you read or write the low level C network structures (e.g. port and address information), remember to use the above functions to ensure correct conversion to/from a machine format. Otherwise the displayed or specified value may be incorrect.</p>
+<h2>What are the 'big 4' network calls used to create a server?</h2>
+<p>The four system calls required to create a TCP server are: <code>socket</code>, <code>bind</code> <code>listen</code> and <code>accept</code>. Each has a specific purpose and should be called in the above order</p>
+<p>The port information (used by bind) can be set manually (many older IPv4-only C code examples do this), or be created using <code>getaddrinfo</code></p>
+<p>We also see examples of setsockopt later too.</p>
+<h2>What is the purpose of calling <code>socket</code>?</h2>
+<p>To create a endpoint for networking communication. A new socket by itself is not particularly useful; though we've specified either a packet or stream-based connections it is not bound to a particular network interface or port. Instead socket returns a network descriptor that can be used with later calls to bind,listen and accept.</p>
+<h2>What is the purpose of calling <code>bind</code></h2>
+<p>The <code>bind</code> call associates an abstract socket with an actual network interface and port. It is possible to call bind on a TCP client however it's unusually unnecessary to specify the outgoing port.</p>
+<h2>What is the purpose of calling <code>listen</code></h2>
+<p>The <code>listen</code> call specifies the queue size for the number of incoming, unhandled connections i.e. that have not yet been assigned a network descriptor by <code>accept</code><br />
+Typical values for a high performance server are 128 or more.</p>
+<h2>Why are server sockets passive?</h2>
+<p>Server sockets do not actively try to connect to another host; instead they wait for incoming connections. Additionally, server sockets are not closed when the peer disconnects. Instead when a remote client connects, it is immediately bumped to an unused port number for future communications.</p>
+<h2>What is the purpose of calling <code>accept</code></h2>
+<p>Once the server socket has been initialized the server calls <code>accept</code> to wait for new connections. Unlike <code>socket</code> <code>bind</code> and <code>listen</code>, this call will block. i.e. if there are no new connections, this call will block and only return when a new client connects.</p>
+<p>Note the <code>accept</code> call returns a new file descriptor. This file descriptor is specific to a particular client. It is common programming mistake to use the original server socket descriptor for server I/O and then wonder why networking code has failed.</p>
+<h2>What are the gotchas of creating a TCP-server?</h2>
+<ul>
+<li>Using the socket descriptor of the passive server socket (described above)</li>
+<li>Not specifying SOCK_STREAM requirement for getaddrinfo</li>
+<li>Not being able to re-use an existing port.</li>
+<li>Not initializing the unused struct entries</li>
+<li>The <code>bind</code> call will fail if the port is currently in use</li>
+</ul>
+<p>Note, ports are per machine- not per process or per user. In other words,  you cannot use port 1234 while another process is using that port. Worse, ports are by default 'tied up' after a process has finished.</p>
+<h2>Server code example</h2>
+<p>A working simple server example is shown below. Note this example is incomplete - for example it does not close either socket descriptor, or free up memory created by <code>getaddrinfo</code></p>
+<pre class="highlight"><code class="language-C">#include &amp;lt;string.h&amp;gt;
+#include &amp;lt;stdio.h&amp;gt;
+#include &amp;lt;stdlib.h&amp;gt;
+#include &amp;lt;sys/types.h&amp;gt;
+#include &amp;lt;sys/socket.h&amp;gt;
+#include &amp;lt;netdb.h&amp;gt;
+#include &amp;lt;unistd.h&amp;gt;
+#include &amp;lt;arpa/inet.h&amp;gt;
+
+int main(int argc, char **argv)
+{
+    int s;
+    int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
+
+    struct addrinfo hints, *result;
+    memset(&amp;amp;hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    s = getaddrinfo(NULL, &quot;1234&quot;, &amp;amp;hints, &amp;amp;result);
+    if (s != 0) {
+            fprintf(stderr, &quot;getaddrinfo: %s\n&quot;, gai_strerror(s));
+            exit(1);
+    }
+
+    if (bind(sock_fd, result-&amp;gt;ai_addr, result-&amp;gt;ai_addrlen) != 0) {
+        perror(&quot;bind()&quot;);
+        exit(1);
+    }
+
+    if (listen(sock_fd, 10) != 0) {
+        perror(&quot;listen()&quot;);
+        exit(1);
+    }
+
+    struct sockaddr_in *result_addr = (struct sockaddr_in *) result-&amp;gt;ai_addr;
+    printf(&quot;Listening on file descriptor %d, port %d\n&quot;, sock_fd, ntohs(result_addr-&amp;gt;sin_port));
+
+    printf(&quot;Waiting for connection...\n&quot;);
+    int client_fd = accept(sock_fd, NULL, NULL);
+    printf(&quot;Connection made: client_fd=%d\n&quot;, client_fd);
+
+    char buffer[1000];
+    int len = read(client_fd, buffer, sizeof(buffer) - 1);
+    buffer[len] = '\0';
+
+    printf(&quot;Read %d chars\n&quot;, len);
+    printf(&quot;===\n&quot;);
+    printf(&quot;%s\n&quot;, buffer);
+
+    return 0;
+}</code></pre>
+
+
+<h2>Why can't my server re-use the port?</h2>
+<p>By default a port is not immediately released when the socket is closed. Instead, the port enters a "TIMED-WAIT" state. This can lead to significant confusion during development because the timeout can make valid networking code appear to fail.</p>
+<p>To be able to immediately re-use a port, specify <code>SO_REUSEPORT</code> before binding to the port.</p>
+<pre class="highlight"><code class="language-C">int optval = 1;
+setsockopt(sfd, SOL_SOCKET, SO_REUSEPORT, &amp;amp;optval, sizeof(optval));
+
+bind(....</code></pre>
+
+
+<p>Here's <a href="http://stackoverflow.com/questions/14388706/socket-options-so-reuseaddr-and-so-reuseport-how-do-they-differ-do-they-mean-t">an extended stackoverflow introductory discussion of <code>SO_REUSEPORT</code></a>.</p>          </div>
+        </div>
+      </main>
+    </div>
+    <script src="check_mc.js"></script>
+	<script>
+	  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+	  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+	  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+	  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+	  ga('create', 'UA-71027581-1', 'auto');
+	  ga('send', 'pageview');
+
+	</script>
+  </body>
+</html>
