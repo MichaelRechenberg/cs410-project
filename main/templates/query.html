@@ -1,0 +1,37 @@
+<!-- query html form submitting a POST
+	request to a handler. -->
+
+<html>
+
+<head>
+	<title>Piazza Search System</title>
+
+	<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+</head>
+
+<body>
+<div id = "container">
+	<div id = "queryForm">
+		<form action = "{{url_for('handler')}}" method="post">
+			Query:<br>
+			<input type="text" name="query">
+
+			{% for topic in topics %}
+				<br>Weight for {{topic.name}}:<br>
+				<input type="number" name="weight_{{topic.name}}" value="{{topic.weight}}">
+			{% endfor %}
+			<br><br>
+			<input type="submit" value="Search">
+		</form>
+	</div>
+
+<!--
+		@app.route('/')
+	def form():
+		return render_template('query.html')
+-->
+
+</div>
+
+</body>
+</html>
