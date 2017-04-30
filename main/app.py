@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, url_for, send_from_directory
 import os
 import socket
+import copy
 
 from PSS import PSS
 
@@ -47,21 +48,72 @@ app = Flask(__name__)
 
 @app.route('/')
 def main():
-  return render_template('query.html')
+  collections = pss.collections
+  topics = []
+  for elem in collections:
+    obj = {}
+    obj['name'] = elem
+    obj['weight'] = pss.weights[elem]
+    topics.append(obj)
+  
+  return render_template('query.html', topics = topics)
 
-@app.route('/handler', methods = ['POST'])
+@app.route('/result', methods = ['POST'])
 def handler():
+  #set up user defined weights
+  collections = pss.collections
+  orig_weights = copy.deepcopy(pss.weights)
+  print("Original")
+  print(pss.weights)
+  for elem in collections:
+    weight_req = 'weight_' + elem
+    pss.weights[elem] = float(request.form[weight_req])
+
   query = request.form['query']
+
+  print("Modified")
+  print(pss.weights)
   #Use the PSS_Runner to score the query
   results = pss.score_query(query, MAX_NUM_RESULTS)
-  #Do stuff with results
+  
+  #restore original weights
+#for elem in collections:
+#    weight_orig = 'weight_' + elem
+#    pss.weights[elem] = orig_weights[elem]
 
-  return render_template('', query = query)
+  pss.weights = orig_weights
+  print("After score_query()")
+  print(pss.weights)
 
-@app.route('/raw/<path:doc_request>')
+  windows = []
+  raw_paths = []
+  file_names = []
+
+  #run through result tuples and create a list of wots using the filepaths
+  for elem in results:
+    window = generate_wot(query, os.path.join(pss.get_parsed_docs_dir(), str(elem[0])))
+    windows.append(window)
+    raw_paths.append(os.path.join('raw_docs', str(elem[2])))
+    file_names.append(os.path.basename(elem[2]))
+  
+  return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names)
+
+def generate_wot(query, filepath):
+
+  window = ""
+  with open(filepath, 'r+') as f:
+    for line in f:
+      if query in line:
+        window = line;
+        break
+
+  return window;
+
+
+@app.route('/raw_docs/<path:doc_request>')
 def show_doc(doc_request):
   #local_ip = get_lan_ip
-  return send_from_directory(RAW_DOCS_DIRECTORY, doc_request);
+  return send_from_directory(pss.get_raw_docs_dir(), doc_request);
 
 if __name__ == '__main__':
 
@@ -77,6 +129,7 @@ if __name__ == '__main__':
     'angrave_book': PSS.html_parser_function,
     'pdfs':         PSS.pdf_parser_function
   }
+
   pss.parser_mappings = parser_mappings
 
   #Set collection weights
@@ -86,12 +139,11 @@ if __name__ == '__main__':
     'pdfs'        : 1,
     'mp_docs'     : 3,
   }
+
   pss.weights = weights
   pss.parse_raw_docs()
   pss.generate_index()
 
   print("PSS_Runner Created Successfully")
-
-
 
   app.run(host='0.0.0.0')

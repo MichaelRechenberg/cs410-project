@@ -15,6 +15,8 @@
 		<form action = "{{url_for('handler')}}" method="post">
 			Query:<br>
 			<input type="text" name="query">
+      <br></br>
+      <br></br>
 
 			{% for topic in topics %}
 				<br>Weight for {{topic.name}}:<br>
