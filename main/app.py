@@ -64,27 +64,16 @@ def handler():
   #set up user defined weights
   collections = pss.collections
   orig_weights = copy.deepcopy(pss.weights)
-  print("Original")
-  print(pss.weights)
   for elem in collections:
     weight_req = 'weight_' + elem
     pss.weights[elem] = float(request.form[weight_req])
 
   query = request.form['query']
 
-  print("Modified")
-  print(pss.weights)
   #Use the PSS_Runner to score the query
   results = pss.score_query(query, MAX_NUM_RESULTS)
   
-  #restore original weights
-#for elem in collections:
-#    weight_orig = 'weight_' + elem
-#    pss.weights[elem] = orig_weights[elem]
-
   pss.weights = orig_weights
-  print("After score_query()")
-  print(pss.weights)
 
   windows = []
   raw_paths = []
@@ -100,6 +89,8 @@ def handler():
   google_results = []
   for url in search(query, stop = 10):
     google_results.append(url)
+
+  print(google_results)
   
   return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names, google_results = google_results)
 
