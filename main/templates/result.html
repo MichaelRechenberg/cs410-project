@@ -17,6 +17,7 @@
 	</div>
 
 	<div id = "docList">
+    <h1>Instructor's Documents</h1>
 		<ol>
 			{% for f in range(file_names|length) %}
 				<li>
@@ -25,15 +26,18 @@
 				</li>
 			{% endfor %}
 		</ol>
-		<!-- to be added -->
+
+    <h1>External Search Engine Results</h1>
+    <ol>
+			{% for google_link in google_results%}
+				<li>
+					<a href="{{google_link}}">{{google_link}}</a><br>
+				</li>
+      {% endfor %}
+    </ol>
 	</div>
 
 
-<!--	@app.route('/handler/' methods=['POST'])
-	def handler():
-		query = request.form['queryPost']
-		return render_template('response.html', query=query)
--->
 
 </div>
 

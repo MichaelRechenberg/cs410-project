@@ -11,6 +11,8 @@ pss = None
 
 #Maximum number of results we want to return to the user
 MAX_NUM_RESULTS = 10
+#Maximum number of google results we will search for
+MAX_GOOGLE_RESULTS = 10
 
 RAW_DOCS_DIRECTORY = PSS.PSS_Runner.raw_docs_dir
 
@@ -87,12 +89,15 @@ def handler():
     file_names.append(os.path.basename(elem[2]))
     
   google_results = []
-  for url in search(query, stop = 10):
+  for url in search(query, stop = MAX_GOOGLE_RESULTS):
     google_results.append(url)
 
-  print(google_results)
-  
-  return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names, google_results = google_results)
+  return render_template('result.html', 
+      query = query, 
+      windows = windows, 
+      raw_paths = raw_paths, 
+      file_names = file_names, 
+      google_results = google_results)
 
 def generate_wot(query, filepath):
 
