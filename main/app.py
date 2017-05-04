@@ -100,7 +100,7 @@ def handler():
   for url in search(query, stop = 10):
     google_results.append(url)
   
-  return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names)
+  return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names, google_results = google_results)
 
 def generate_wot(query, filepath):
 
