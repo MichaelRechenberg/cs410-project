@@ -95,6 +95,10 @@ def handler():
     windows.append(window)
     raw_paths.append(os.path.join('raw_docs', str(elem[2])))
     file_names.append(os.path.basename(elem[2]))
+    
+  google_results = []
+  for url in search(query, stop = 10):
+    google_results.append(url)
   
   return render_template('result.html', query = query, windows = windows, raw_paths = raw_paths, file_names = file_names)
 
