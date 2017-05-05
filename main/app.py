@@ -3,6 +3,9 @@ import os
 import socket
 import copy
 from google import search
+import metapy
+import re
+
 
 from PSS import PSS
 
@@ -99,16 +102,73 @@ def handler():
       file_names = file_names, 
       google_results = google_results)
 
+
 def generate_wot(query, filepath):
+  """
+    Takes a query and path to a parsed version of a file
+    and returns a window of text around non-stopword
+    keywords of 'query'
+
+    Params:
+      query - Query that the user passed in.  Stopword
+        removal will be performed on this query before 
+        looking for a suitable window of text
+      filepath - filepath to the parsed version of the document
+
+    Returns:
+      A string containing a suitable window of text. May be ""
+        if no suitable line was found
+  """
 
   window = ""
-  with open(filepath, 'r+') as f:
-    for line in f:
-      if query in line:
-        window = line;
-        break
+  #modified query with stopwords removed
+  mod_query = metapy.index.Document()
+  mod_query.content(query)
+  #Remove the <s> boundary tags MeTA generates
+  tok = metapy.analyzers.ICUTokenizer(suppress_tags=True)
+  tok = metapy.analyzers.ListFilter(tok, 
+                                    "stopwords.txt", 
+                                    metapy.analyzers.ListFilter.Type.Reject)
+  tok.set_content(mod_query.content())
 
-  return window;
+  #  We're going to search every line in the parsed document
+  #   and count how many times a keyword matches a line 
+  #  The line with the most keyword matches will be returned
+  query_words = [token for token in tok]
+
+  # line-indexed array containing how many times line i
+  #   matched a keyword
+  line_matches = []
+
+  with open(filepath, 'r+') as f:
+    lines = f.readlines()
+    line_matches = [0] * len(lines)
+    for line_num, line in enumerate(lines):
+      for word in query_words:
+        #If we found a keyword in this line,
+        # mark that this line matched this keyword
+        pattern = '\\b{0}\\b'.format(word)
+        num_keyword_matches = len(re.findall(pattern, line, re.IGNORECASE))
+
+        if num_keyword_matches > 0:
+          line_matches[line_num] += num_keyword_matches
+
+    #Find the best-matching line
+    best_line_index = line_matches.index(max(line_matches))
+    best_line_num_matches = line_matches[best_line_index]
+    print("Line #{0} had {1} matches".format(best_line_index, best_line_num_matches))
+
+    #No suitable line was found, return ""
+    if best_line_num_matches == 0:
+      window = "" 
+    else:
+      #A best line was found, return that line
+      window = lines[best_line_index]
+
+    print(window)
+
+
+  return window
 
 
 @app.route('/raw_docs/<path:doc_request>')
