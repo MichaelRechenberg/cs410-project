@@ -12,15 +12,15 @@
 </head>
 
 <body>
-<div id = "container">
-	<div id = "response">
-		<strong>Your Query:</strong> {{query}}
-		<form action = "{{url_for('main')}}">
-			<input type = "submit" value="New Query" class="btn">
-		</form>
-	</div>
-	
-    <h1>Instructor's Documents</h1>
+<div style="padding-left:10px; padding-top:10px">
+	<strong>Your Query:</strong> {{query}}
+	<form action = "{{url_for('main')}}">
+		<input type = "submit" value="New Query" class="btn">
+	</form>
+
+<div class="panel panel-primary">
+	<div class="panel-heading">Instructor's Documents</div>
+	<div class="panel-body">
 		<ol>
 			{% for f in range(file_names|length) %}
 				<li>
@@ -29,16 +29,20 @@
 				</li>
 			{% endfor %}
 		</ol>
+	</div>
+</div>
 
-    <h1>External Search Engine Results</h1>
-    <ol>
-			{% for google_link in google_results%}
-				<li>
-					<a href="{{google_link}}">{{google_link}}</a><br>
-				</li>
-    			{% endfor %}
-    </ol>
-
+<div class="panel">
+	<div class="panel-heading">External Search Engine Results</div>
+	<div class="panel-body">
+	<ol>
+		{% for google_link in google_results%}
+			<li>
+				<a href="{{google_link}}">{{google_link}}</a><br>
+			</li>
+    	{% endfor %}
+	</ol>
+	</div>
 </div>
 
 </body>
