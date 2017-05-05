@@ -4,28 +4,30 @@
 <html>
 
 <head>
-	<title>Piazza Search System</title>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE-edge">
+	<meta name = "viewport" content="width=device-width, initial-scale=1">
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
 
-	<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+	<title>Piazza Search System</title>
 </head>
 
 <body>
 <div id = "container">
-	<div id = "queryForm">
-		<form action = "{{url_for('handler')}}" method="post">
-			Query:<br>
-			<input type="text" name="query">
+	<form action = "{{url_for('handler')}}" method="post">
+		Query:<br>
+		<input type="text" name="query">
       <br></br>
       <br></br>
 
-			{% for topic in topics %}
-				<br>Weight for {{topic.name}}:<br>
-				<input type="number" name="weight_{{topic.name}}" value="{{topic.weight}}">
-			{% endfor %}
-			<br><br>
-			<input type="submit" value="Search">
-		</form>
-	</div>
+		{% for topic in topics %}
+			<br>Weight for {{topic.name}}:<br>
+			<input type="number" name="weight_{{topic.name}}" value="{{topic.weight}}">
+		{% endfor %}
+		<br><br>
+		<input type="submit" class="btn" value="Search">
+	</form>
+</div>
 
 <!--
 		@app.route('/')
