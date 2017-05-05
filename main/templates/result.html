@@ -3,8 +3,12 @@
 <html>
 
 <head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE-edge">
+	<meta name = "viewport" content="width=device-width, initial-scale=1">
+	<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+
 	<title>Search Results</title>
-<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
 </head>
 
 <body>
@@ -12,11 +16,10 @@
 	<div id = "response">
 		<strong>Your Query:</strong> {{query}}
 		<form action = "{{url_for('main')}}">
-			<input type = "submit" value="New Query">
+			<input type = "submit" value="New Query" class="btn">
 		</form>
 	</div>
-
-	<div id = "docList">
+	
     <h1>Instructor's Documents</h1>
 		<ol>
 			{% for f in range(file_names|length) %}
@@ -33,11 +36,8 @@
 				<li>
 					<a href="{{google_link}}">{{google_link}}</a><br>
 				</li>
-      {% endfor %}
+    			{% endfor %}
     </ol>
-	</div>
-
-
 
 </div>
 
